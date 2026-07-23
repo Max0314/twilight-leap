@@ -32,7 +32,7 @@ npm run verify
 docker compose config
 docker compose build
 docker compose up -d
-curl http://127.0.0.1:3100/healthz
+curl http://127.0.0.1:23002/healthz
 ```
 
 端口可以通过 `TWILIGHT_LEAP_PORT` 调整。构建时通过 `NEXT_PUBLIC_SITE_URL` 写入正式 HTTPS 地址：

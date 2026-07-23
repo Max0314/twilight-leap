@@ -1,16 +1,19 @@
-name: twilight-leap
+name: fribench-twilight-leap
 
 services:
   web:
-    image: ${TWILIGHT_LEAP_IMAGE:-twilight-leap:local}
+    image: ${TWILIGHT_LEAP_IMAGE:-fribench-twilight-leap:local}
     build:
       context: .
       args:
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3100}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://127.0.0.1:23002}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
     init: true
     ports:
-      - "127.0.0.1:${TWILIGHT_LEAP_PORT:-3100}:8080"
+      - "127.0.0.1:${TWILIGHT_LEAP_PORT:-23002}:8080"
+    networks:
+      - edge
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
@@ -32,3 +35,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  edge:
+    name: fribench-twilight-leap-edge-v1
+    driver: bridge

@@ -1,20 +1,22 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS dependencies
+FROM node:24.18.0-alpine AS dependencies
 WORKDIR /app
+ARG NPM_REGISTRY=https://registry.npmjs.org
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,id=twilight-leap-npm,target=/root/.npm,sharing=locked \
+    npm ci --registry="${NPM_REGISTRY}"
 
-FROM node:22-alpine AS builder
+FROM node:24.18.0-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ARG NEXT_PUBLIC_SITE_URL=http://localhost:3100
+ARG NEXT_PUBLIC_SITE_URL=http://127.0.0.1:23002
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM nginx:1.28-alpine AS runtime
+FROM nginx:1.28.3-alpine AS runtime
 COPY deploy/container-nginx.conf /etc/nginx/nginx.conf
 COPY --from=builder /app/out /usr/share/nginx/html
 USER 101:101

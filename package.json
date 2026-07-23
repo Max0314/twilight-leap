@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "serve -s out -l 3000",
     "test": "vitest run --config vitest.config.ts",
-    "test:rendered": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test:rendered": "npm run build && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
