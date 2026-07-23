@@ -1,0 +1,78 @@
+import type { LevelDefinition } from "./types";
+
+export const WORLD_WIDTH = 7_200;
+export const WORLD_HEIGHT = 900;
+
+export const LEVEL: LevelDefinition = {
+  spawn: { x: 150, y: 656 },
+  platforms: [
+    { id: "court-entry", kind: "stone", x: 0, y: 720, width: 820, height: 180 },
+    { id: "awning-step", kind: "stone", x: 900, y: 650, width: 300, height: 250 },
+    { id: "market-beam", kind: "wood", x: 1_250, y: 560, width: 260, height: 28 },
+    { id: "fountain-walk", kind: "stone", x: 1_600, y: 700, width: 540, height: 200 },
+    {
+      id: "lantern-lift",
+      kind: "moving",
+      x: 2_250,
+      y: 610,
+      width: 260,
+      height: 28,
+      travel: { x: 0, y: -120 },
+      speed: 0.75,
+      phase: 0.2,
+    },
+    { id: "lower-arcade", kind: "stone", x: 2_600, y: 690, width: 520, height: 210 },
+    { id: "old-balcony", kind: "crumble", x: 3_180, y: 580, width: 300, height: 30 },
+    { id: "sunken-plaza", kind: "stone", x: 3_520, y: 700, width: 700, height: 200 },
+    {
+      id: "banner-lift",
+      kind: "moving",
+      x: 4_320,
+      y: 610,
+      width: 300,
+      height: 28,
+      travel: { x: 0, y: -110 },
+      speed: 0.62,
+      phase: 1.4,
+    },
+    { id: "vine-court", kind: "stone", x: 4_700, y: 690, width: 520, height: 210 },
+    { id: "watch-step", kind: "stone", x: 5_300, y: 590, width: 260, height: 310 },
+    { id: "high-gallery", kind: "wood", x: 5_600, y: 500, width: 320, height: 30 },
+    { id: "gate-approach", kind: "crumble", x: 5_980, y: 650, width: 340, height: 32 },
+    { id: "star-sanctum", kind: "stone", x: 6_420, y: 700, width: 780, height: 200 },
+  ],
+  hazards: [
+    { x: 535, y: 684, width: 116, height: 36 },
+    { x: 1_930, y: 664, width: 110, height: 36 },
+    { x: 2_870, y: 654, width: 110, height: 36 },
+    { x: 3_880, y: 664, width: 122, height: 36 },
+    { x: 4_950, y: 654, width: 112, height: 36 },
+    { x: 6_700, y: 664, width: 118, height: 36 },
+  ],
+  stars: [
+    { id: "star-01", x: 350, y: 620 },
+    { id: "star-02", x: 1_040, y: 550 },
+    { id: "star-03", x: 1_380, y: 460 },
+    { id: "star-04", x: 1_790, y: 600 },
+    { id: "star-05", x: 2_380, y: 490 },
+    { id: "star-06", x: 2_760, y: 590 },
+    { id: "star-07", x: 3_330, y: 480 },
+    { id: "star-08", x: 3_760, y: 600 },
+    { id: "star-09", x: 4_470, y: 500 },
+    { id: "star-10", x: 4_830, y: 590 },
+    { id: "star-11", x: 5_760, y: 400 },
+    { id: "star-12", x: 6_560, y: 590 },
+  ],
+  checkpoints: [
+    { id: "plaza-lantern", x: 3_565, y: 610, width: 46, height: 90 },
+  ],
+  enemies: [
+    { id: "emberling-1", kind: "emberling", x: 420, y: 672, width: 54, height: 48, minX: 340, maxX: 500 },
+    { id: "beetle-1", kind: "beetle", x: 1_710, y: 630, width: 80, height: 70, minX: 1_650, maxX: 1_900 },
+    { id: "emberling-2", kind: "emberling", x: 2_660, y: 642, width: 54, height: 48, minX: 2_630, maxX: 2_820 },
+    { id: "beetle-2", kind: "beetle", x: 3_650, y: 630, width: 80, height: 70, minX: 3_600, maxX: 3_840 },
+    { id: "emberling-3", kind: "emberling", x: 4_750, y: 642, width: 54, height: 48, minX: 4_730, maxX: 4_920 },
+    { id: "beetle-3", kind: "beetle", x: 6_490, y: 630, width: 80, height: 70, minX: 6_460, maxX: 6_680 },
+  ],
+  finish: { x: 6_980, y: 530, width: 120, height: 170 },
+};
