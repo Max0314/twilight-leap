@@ -1,0 +1,17 @@
+.git
+.github
+.next
+.openai
+.vinext
+dist
+node_modules
+out
+outputs
+work
+.env*
+*.log
+Dockerfile*
+compose*.yaml
+docs
+tests
+coverage
