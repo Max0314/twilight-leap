@@ -73,6 +73,14 @@ export default function Home() {
     });
   };
 
+  const toggleScreenShake = () => {
+    setPrefs((current) => {
+      const next = { ...current, screenShake: !current.screenShake };
+      savePrefs(next);
+      return next;
+    });
+  };
+
   const setTouch = (
     key: "left" | "right" | "jump",
     pressed: boolean,
@@ -93,6 +101,7 @@ export default function Home() {
           paused={screen === "paused"}
           restartToken={restartToken}
           soundEnabled={prefs.sound}
+          screenShakeEnabled={prefs.screenShake}
           touchInputRef={touchInputRef}
           onSnapshot={setSnapshot}
           onFinish={finish}
@@ -119,6 +128,15 @@ export default function Home() {
               aria-pressed={prefs.sound}
             >
               <span aria-hidden="true">{prefs.sound ? "音" : "静"}</span>
+            </button>
+            <button
+              className="icon-button shake-button"
+              type="button"
+              onClick={toggleScreenShake}
+              aria-label={prefs.screenShake ? "关闭画面震动" : "开启画面震动"}
+              aria-pressed={prefs.screenShake}
+            >
+              <span aria-hidden="true">{prefs.screenShake ? "震" : "稳"}</span>
             </button>
             <button
               className="icon-button"
@@ -173,6 +191,15 @@ export default function Home() {
                 aria-pressed={prefs.sound}
               >
                 音效：{prefs.sound ? "开启" : "关闭"}
+              </button>
+              <button
+                className="secondary-button pause-shake-button"
+                type="button"
+                onClick={toggleScreenShake}
+                aria-label={prefs.screenShake ? "关闭画面震动" : "开启画面震动"}
+                aria-pressed={prefs.screenShake}
+              >
+                画面震动：{prefs.screenShake ? "开启" : "关闭"}
               </button>
             </div>
           </div>

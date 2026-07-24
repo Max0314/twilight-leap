@@ -44,6 +44,7 @@ describe("simulation", () => {
     ).state;
 
     expect(movedX).toBeGreaterThan(LEVEL.spawn.x);
+    expect(state.player.animation.name).toBe("jump");
     expect(state.player.vy).toBeLessThan(0);
   });
 
@@ -69,6 +70,10 @@ describe("simulation", () => {
     stomp.player.vy = 220;
     const stomped = stepGame(stomp, idle, 1 / 60, LEVEL);
     expect(stomped.events.some((event) => event.type === "stomp")).toBe(true);
+    expect(
+      stomped.state.enemies.find((enemy) => enemy.id === enemySeed.id)?.animation
+        .name,
+    ).toBe("defeated");
 
     const hurt = createGame(LEVEL);
     hurt.player.x = enemySeed.x + 6;
@@ -137,6 +142,7 @@ describe("simulation", () => {
     const result = stepGame(state, idle, 1 / 60, LEVEL);
     const beetle = result.state.enemies.find((enemy) => enemy.id === beetleSeed.id)!;
     expect(beetle.phase).toBe("charge");
+    expect(beetle.animation.name).toBe("charge");
     expect(beetle.x).toBe(beetleSeed.x);
   });
 
@@ -253,6 +259,7 @@ describe("simulation", () => {
     const second = stepGame(state, { ...idle, jump: true }, 1 / 60, LEVEL);
     expect(second.events.some((event) => event.type === "jump")).toBe(true);
     expect(second.state.player.vy).toBeLessThan(-PHYSICS.jumpSpeed * 0.7);
+    expect(second.state.player.animation.name).toBe("doubleJump");
 
     state = stepGame(second.state, idle, 1 / 60, LEVEL).state;
     const beforeThird = state.player.vy;
@@ -290,6 +297,7 @@ describe("simulation", () => {
 
     state = stepGame(state, { ...idle, right: true }, 1 / 60, level).state;
     expect(state.player.vy).toBeLessThanOrEqual(190);
+    expect(state.player.animation.name).toBe("wallSlide");
 
     const jumped = stepGame(
       state,
@@ -300,6 +308,79 @@ describe("simulation", () => {
     expect(jumped.events.some((event) => event.type === "jump")).toBe(true);
     expect(jumped.state.player.vx).toBeLessThan(0);
     expect(jumped.state.player.vy).toBeLessThan(0);
+    expect(jumped.state.player.animation.name).toBe("wallJump");
+  });
+
+  it("advances walk and run cycles from movement distance", () => {
+    let state = createGame(LEVEL);
+    let sawWalk = false;
+
+    for (let index = 0; index < 30; index += 1) {
+      state = stepGame(
+        state,
+        { left: false, right: true, jump: false },
+        1 / 60,
+        LEVEL,
+      ).state;
+      sawWalk ||= state.player.animation.name === "walk";
+    }
+
+    expect(sawWalk).toBe(true);
+    expect(state.player.animation.name).toBe("run");
+    expect(state.player.animation.cycle).toBeGreaterThan(0);
+  });
+
+  it("transitions through apex, fall, and landing animation states", () => {
+    const level = isolatedLevel([
+      {
+        id: "animation-floor",
+        kind: "stone",
+        x: 0,
+        y: 500,
+        width: 1_000,
+        height: 60,
+      },
+    ]);
+    let state = createGame(level);
+    Object.assign(state.player, {
+      x: 100,
+      y: 220,
+      vy: -100,
+      grounded: false,
+      coyote: 0,
+    });
+
+    state = stepGame(state, idle, 1 / 60, level).state;
+    expect(state.player.animation.name).toBe("apex");
+
+    Object.assign(state.player, { y: 300, vy: 300 });
+    state = stepGame(state, idle, 1 / 60, level).state;
+    expect(state.player.animation.name).toBe("fall");
+
+    Object.assign(state.player, { y: 435, vy: 300 });
+    state = stepGame(state, idle, 1 / 60, level).state;
+    expect(state.player.animation.name).toBe("land");
+  });
+
+  it("freezes actor animation clocks while paused", () => {
+    let state = createGame(LEVEL);
+    state = stepGame(
+      state,
+      { left: false, right: true, jump: false },
+      1 / 60,
+      LEVEL,
+    ).state;
+    const playerAnimation = { ...state.player.animation };
+    const enemyAnimations = state.enemies.map((enemy) => ({
+      ...enemy.animation,
+    }));
+
+    state = stepGame(setPaused(state, true), idle, 1 / 30, LEVEL).state;
+
+    expect(state.player.animation).toEqual(playerAnimation);
+    expect(state.enemies.map((enemy) => enemy.animation)).toEqual(
+      enemyAnimations,
+    );
   });
 
   it.each([0, 1])(

@@ -14,26 +14,61 @@ describe("storage", () => {
     };
 
     expect(loadPrefs(broken)).toEqual({
-      version: 1,
+      version: 2,
       sound: true,
+      screenShake: true,
       bestTime: null,
       bestStars: 0,
     });
     expect(() =>
       savePrefs(
-        { version: 1, sound: false, bestTime: 72, bestStars: 10 },
+        {
+          version: 2,
+          sound: false,
+          screenShake: false,
+          bestTime: 72,
+          bestStars: 10,
+        },
         broken,
       ),
     ).not.toThrow();
   });
 
+  it("migrates existing records and enables screen shake by default", () => {
+    const storage = {
+      getItem: () =>
+        JSON.stringify({
+          version: 1,
+          sound: false,
+          bestTime: 72,
+          bestStars: 10,
+        }),
+      setItem: () => undefined,
+    };
+
+    expect(loadPrefs(storage)).toEqual({
+      version: 2,
+      sound: false,
+      screenShake: true,
+      bestTime: 72,
+      bestStars: 10,
+    });
+  });
+
   it("keeps the fastest time and highest star count", () => {
     const next = updateRecords(
-      { version: 1, sound: true, bestTime: 80, bestStars: 9 },
+      {
+        version: 2,
+        sound: true,
+        screenShake: false,
+        bestTime: 80,
+        bestStars: 9,
+      },
       95,
       12,
     );
     expect(next.bestTime).toBe(80);
     expect(next.bestStars).toBe(12);
+    expect(next.screenShake).toBe(false);
   });
 });

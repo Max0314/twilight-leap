@@ -32,6 +32,7 @@ type GameCanvasProps = {
   paused: boolean;
   restartToken: number;
   soundEnabled: boolean;
+  screenShakeEnabled: boolean;
   touchInputRef: MutableRefObject<InputState>;
   onSnapshot(snapshot: GameSnapshot): void;
   onFinish(snapshot: GameSnapshot): void;
@@ -109,6 +110,7 @@ export function GameCanvas({
   paused,
   restartToken,
   soundEnabled,
+  screenShakeEnabled,
   touchInputRef,
   onSnapshot,
   onFinish,
@@ -126,6 +128,7 @@ export function GameCanvas({
   const runningRef = useRef(running);
   const pausedRef = useRef(paused);
   const soundRef = useRef(soundEnabled);
+  const screenShakeRef = useRef(screenShakeEnabled);
   const callbacksRef = useRef({
     onSnapshot,
     onFinish,
@@ -137,6 +140,7 @@ export function GameCanvas({
     runningRef.current = running;
     pausedRef.current = paused;
     soundRef.current = soundEnabled;
+    screenShakeRef.current = screenShakeEnabled;
     callbacksRef.current = {
       onSnapshot,
       onFinish,
@@ -151,6 +155,7 @@ export function GameCanvas({
     paused,
     running,
     soundEnabled,
+    screenShakeEnabled,
   ]);
 
   useEffect(() => {
@@ -325,6 +330,7 @@ export function GameCanvas({
         height: bounds.height,
         dpr,
         reducedMotion,
+        screenShake: screenShakeRef.current,
         lowQuality,
         time: now / 1_000,
         atlas: atlasRef.current,

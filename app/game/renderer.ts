@@ -12,6 +12,7 @@ export const GAME_ATLAS_SIZE = 1_254;
 type AtlasFrame = { x: number; y: number; width: number; height: number };
 
 export type HeroPose = {
+  animation: GameState["player"]["animation"]["name"];
   frame: AtlasFrame;
   width: number;
   height: number;
@@ -19,6 +20,19 @@ export type HeroPose = {
   anchorY: number;
   offsetY: number;
   rotation: number;
+};
+
+export type EnemyPose = {
+  animation: EnemyState["animation"]["name"];
+  frame: AtlasFrame;
+  width: number;
+  height: number;
+  anchorX: number;
+  anchorY: number;
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
+  alpha: number;
 };
 
 export const ATLAS_FRAMES = {
@@ -69,6 +83,7 @@ export type RenderOptions = {
   height: number;
   dpr: number;
   reducedMotion: boolean;
+  screenShake: boolean;
   lowQuality: boolean;
   time: number;
   atlas: HTMLImageElement | null;
@@ -313,52 +328,110 @@ const drawFallbackDiamond = (
   ctx.restore();
 };
 
+const cycleBeat = (distance: number, beatDistance: number, beats = 4) =>
+  Math.floor(distance / beatDistance) % beats;
+
 export const getHeroPose = (state: GameState): HeroPose => {
   const player = state.player;
-  let frame: AtlasFrame;
+  const { animation } = player;
+  let frame: AtlasFrame = ATLAS_FRAMES.heroIdle;
   let scale = 1;
   let offsetY = 0;
   let rotation = 0;
 
-  if (!state.player.grounded) {
-    if (player.vy < -160) frame = ATLAS_FRAMES.heroJump;
-    else if (player.vy < 180) frame = ATLAS_FRAMES.heroApex;
-    else frame = ATLAS_FRAMES.heroFall;
-
-    if (player.wallJumpLock > 0) {
-      scale = 1.035;
-      rotation = player.facing * -0.11;
-      offsetY = -1;
-    } else if (player.doubleJumpAccent > 0) {
-      scale = 1.04;
-      rotation = player.facing * -0.045;
-    } else if (player.wallNormal !== 0 && player.vy > 0) {
-      rotation = player.wallNormal * 0.07;
-      offsetY = 1;
+  switch (animation.name) {
+    case "idle":
+      offsetY = Math.sin(animation.time * 2.8) * 0.8;
+      break;
+    case "walk": {
+      const phase = cycleBeat(animation.cycle, 15);
+      const frames = [
+        ATLAS_FRAMES.heroIdle,
+        ATLAS_FRAMES.heroRunA,
+        ATLAS_FRAMES.heroIdle,
+        ATLAS_FRAMES.heroRunB,
+      ] as const;
+      const poseScale = [0.99, 1, 0.985, 1] as const;
+      const poseBob = [0, -1.2, 0, -0.8] as const;
+      frame = frames[phase];
+      scale = poseScale[phase];
+      offsetY = poseBob[phase];
+      rotation = Math.sign(player.vx) * 0.012;
+      break;
     }
-  } else if (Math.abs(player.vx) > 45) {
-    const speedRatio = Math.min(1, Math.abs(player.vx) / 350);
-    const frameRate = 7 + speedRatio * 5;
-    const phase = Math.floor(state.elapsed * frameRate) % 4;
-    const frames = [
-      ATLAS_FRAMES.heroRunA,
-      ATLAS_FRAMES.heroRunB,
-      ATLAS_FRAMES.heroRunA,
-      ATLAS_FRAMES.heroRunB,
-    ] as const;
-    const poseScale = [1, 0.975, 1.015, 0.99] as const;
-    const poseBob = [0, -1.5, 0, -0.75] as const;
-    frame = frames[phase];
-    scale = poseScale[phase];
-    offsetY = poseBob[phase];
-    rotation = Math.sign(player.vx) * (0.018 + speedRatio * 0.022);
-  } else {
-    frame = ATLAS_FRAMES.heroIdle;
+    case "run": {
+      const phase = cycleBeat(animation.cycle, 20);
+      const frames = [
+        ATLAS_FRAMES.heroRunA,
+        ATLAS_FRAMES.heroRunB,
+        ATLAS_FRAMES.heroRunA,
+        ATLAS_FRAMES.heroRunB,
+      ] as const;
+      const poseScale = [1, 0.975, 1.015, 0.99] as const;
+      const poseBob = [0, -2, 0.4, -1.1] as const;
+      frame = frames[phase];
+      scale = poseScale[phase];
+      offsetY = poseBob[phase];
+      rotation = Math.sign(player.vx) * 0.036;
+      break;
+    }
+    case "jump":
+      frame = ATLAS_FRAMES.heroJump;
+      scale = 1.015;
+      rotation = player.facing * -0.025;
+      break;
+    case "doubleJump": {
+      const progress = Math.min(1, animation.time / 0.14);
+      frame = progress < 0.48 ? ATLAS_FRAMES.heroApex : ATLAS_FRAMES.heroJump;
+      scale = 1.055 - progress * 0.03;
+      offsetY = -2 * (1 - progress);
+      rotation = player.facing * (-0.13 + progress * 0.09);
+      break;
+    }
+    case "wallJump": {
+      const progress = Math.min(1, animation.time / 0.12);
+      frame = ATLAS_FRAMES.heroJump;
+      scale = 1.04 - progress * 0.025;
+      offsetY = -1;
+      rotation = player.facing * (-0.15 + progress * 0.06);
+      break;
+    }
+    case "apex":
+      frame = ATLAS_FRAMES.heroApex;
+      offsetY = -1.5;
+      rotation = player.facing * -0.012;
+      break;
+    case "fall":
+      frame = ATLAS_FRAMES.heroFall;
+      rotation = Math.sign(player.vx) * 0.022;
+      break;
+    case "wallSlide":
+      frame = ATLAS_FRAMES.heroFall;
+      offsetY = 1.5 + Math.sin(animation.time * 15) * 0.45;
+      rotation = player.wallNormal * 0.085;
+      break;
+    case "land": {
+      const progress = Math.min(1, animation.time / 0.13);
+      frame =
+        progress < 0.38 ? ATLAS_FRAMES.heroFall : ATLAS_FRAMES.heroIdle;
+      scale = 0.94 + progress * 0.06;
+      offsetY = 2.4 * (1 - progress);
+      break;
+    }
+    case "hurt": {
+      const progress = Math.min(1, animation.time / 0.55);
+      frame = ATLAS_FRAMES.heroFall;
+      scale = 1 - progress * 0.08;
+      offsetY = -Math.sin(progress * Math.PI) * 9;
+      rotation = player.facing * (0.24 + progress * 0.55);
+      break;
+    }
   }
 
   const height = 112 * scale;
   const width = height * (frame.width / frame.height);
   return {
+    animation: animation.name,
     frame,
     width,
     height,
@@ -369,16 +442,90 @@ export const getHeroPose = (state: GameState): HeroPose => {
   };
 };
 
-const chooseEnemyFrame = (enemy: EnemyState, time: number) => {
+export const getEnemyPose = (enemy: EnemyState): EnemyPose => {
+  const { animation } = enemy;
+  const isBeetle = enemy.kind === "beetle";
+  let frame: AtlasFrame = isBeetle
+    ? ATLAS_FRAMES.beetleIdle
+    : ATLAS_FRAMES.emberIdle;
+  let scale = 1;
+  let offsetX = 0;
+  let offsetY = 0;
+  let rotation = 0;
+  let alpha = 1;
+
   if (enemy.kind === "emberling") {
-    return Math.floor(time * 6) % 2 === 0
-      ? ATLAS_FRAMES.emberIdle
-      : ATLAS_FRAMES.emberWalk;
+    if (animation.name === "walk") {
+      const phase = cycleBeat(animation.cycle, 9);
+      frame =
+        phase === 0 || phase === 2
+          ? ATLAS_FRAMES.emberIdle
+          : ATLAS_FRAMES.emberWalk;
+      scale = phase === 0 || phase === 2 ? 0.98 : 1;
+      offsetY = phase === 1 ? -1.8 : phase === 3 ? -1 : 0;
+      rotation = enemy.direction * (phase === 1 ? 0.025 : -0.012);
+    } else if (animation.name === "turn") {
+      frame = ATLAS_FRAMES.emberIdle;
+      const progress = Math.min(1, animation.time / 0.14);
+      scale = 0.94 + Math.sin(progress * Math.PI) * 0.045;
+      offsetY = Math.sin(progress * Math.PI) * -2;
+      rotation = enemy.direction * Math.sin(progress * Math.PI) * 0.05;
+    } else if (animation.name === "defeated") {
+      const progress = Math.min(1, animation.time / 0.34);
+      frame = ATLAS_FRAMES.emberWalk;
+      offsetX = enemy.direction * progress * 9;
+      offsetY = -Math.sin(progress * Math.PI) * 13;
+      rotation = enemy.direction * progress * 1.2;
+      alpha = 1 - progress;
+    }
+  } else {
+    switch (animation.name) {
+      case "charge":
+        frame = ATLAS_FRAMES.beetleCharge;
+        offsetX = Math.sin(animation.time * 48) * 1.4;
+        scale = 1 + Math.min(0.035, animation.time * 0.08);
+        rotation = enemy.direction * -0.025;
+        break;
+      case "dash":
+        frame = ATLAS_FRAMES.beetleDash;
+        offsetY = 1 + Math.sin(animation.cycle * 0.08) * 0.7;
+        rotation = enemy.direction * 0.018;
+        break;
+      case "recover":
+        frame = ATLAS_FRAMES.beetleStunned;
+        offsetY = Math.sin(animation.time * 16) * 1.4;
+        rotation = Math.sin(animation.time * 18) * 0.035;
+        break;
+      case "defeated": {
+        const progress = Math.min(1, animation.time / 0.38);
+        frame = ATLAS_FRAMES.beetleStunned;
+        offsetY = -Math.sin(progress * Math.PI) * 8;
+        rotation = enemy.direction * progress * 0.28;
+        alpha = 1 - progress;
+        break;
+      }
+      default:
+        frame = ATLAS_FRAMES.beetleIdle;
+        scale = 1 + Math.sin(animation.time * 2.6) * 0.008;
+        break;
+    }
   }
-  if (enemy.phase === "charge") return ATLAS_FRAMES.beetleCharge;
-  if (enemy.phase === "dash") return ATLAS_FRAMES.beetleDash;
-  if (enemy.phase === "recover") return ATLAS_FRAMES.beetleStunned;
-  return ATLAS_FRAMES.beetleIdle;
+
+  const baseHeight = isBeetle ? 86 : 76;
+  const height = baseHeight * scale;
+  const width = height * (frame.width / frame.height);
+  return {
+    animation: animation.name,
+    frame,
+    width,
+    height,
+    anchorX: enemy.x + enemy.width / 2,
+    anchorY: enemy.y + enemy.height,
+    offsetX,
+    offsetY,
+    rotation,
+    alpha,
+  };
 };
 
 const drawWorldEntities = (
@@ -432,21 +579,37 @@ const drawWorldEntities = (
   );
 
   for (const enemy of state.enemies) {
-    if (!enemy.alive) continue;
-    const width = enemy.kind === "beetle" ? 116 : 82;
-    const height = enemy.kind === "beetle" ? 86 : 76;
+    if (
+      !enemy.alive &&
+      (enemy.animation.name !== "defeated" || enemy.animation.time >= 0.4)
+    ) {
+      continue;
+    }
+    const pose = getEnemyPose(enemy);
+    ctx.save();
+    ctx.translate(
+      (pose.anchorX - cameraX + pose.offsetX) * scale,
+      (pose.anchorY + pose.offsetY) * scale,
+    );
+    ctx.rotate(pose.rotation);
     drawAtlas(
       ctx,
       atlas,
-      chooseEnemyFrame(enemy, time),
-      (enemy.x - cameraX + enemy.width / 2) * scale - (width * scale) / 2,
-      (enemy.y + enemy.height) * scale - height * scale,
-      width * scale,
-      height * scale,
+      pose.frame,
+      (-pose.width * scale) / 2,
+      -pose.height * scale,
+      pose.width * scale,
+      pose.height * scale,
       enemy.direction < 0,
+      pose.alpha,
     );
+    ctx.restore();
 
-    if (enemy.kind === "beetle" && enemy.phase === "charge") {
+    if (
+      enemy.alive &&
+      enemy.kind === "beetle" &&
+      enemy.phase === "charge"
+    ) {
       ctx.save();
       ctx.fillStyle = `rgba(255,205,104,${0.55 + Math.sin(time * 22) * 0.25})`;
       ctx.font = `${Math.max(18, 24 * scale)}px sans-serif`;
@@ -602,22 +765,53 @@ const drawBursts = (
   }
 };
 
+export const getScreenShakeStrength = (
+  bursts: VisualBurst[],
+  reducedMotion: boolean,
+  screenShake: boolean,
+) => {
+  if (reducedMotion || !screenShake) return 0;
+  let strength = 0;
+  for (const burst of bursts) {
+    if (
+      burst.age >= 0.65 ||
+      (burst.type !== "hurt" &&
+        burst.type !== "stomp" &&
+        burst.type !== "land")
+    ) {
+      continue;
+    }
+    strength = Math.max(strength, (1 - burst.age / 0.65) * 4);
+  }
+  return strength;
+};
+
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
   level: LevelDefinition,
   options: RenderOptions,
 ): void {
-  const { width, height, atlas, time, lowQuality, reducedMotion, bursts } = options;
+  const {
+    width,
+    height,
+    atlas,
+    time,
+    lowQuality,
+    reducedMotion,
+    screenShake,
+    bursts,
+  } = options;
   const scale = height / WORLD_HEIGHT;
   const viewWorldWidth = width / scale;
   const targetCamera = state.player.x + state.player.width / 2 - viewWorldWidth * 0.42;
   const cameraX = Math.max(0, Math.min(WORLD_WIDTH - viewWorldWidth, targetCamera));
   const activeBursts = bursts.filter((burst) => burst.age < 0.65);
-  const shakeBurst = activeBursts.find(
-    (burst) => burst.type === "hurt" || burst.type === "stomp" || burst.type === "land",
+  const shake = getScreenShakeStrength(
+    activeBursts,
+    reducedMotion,
+    screenShake,
   );
-  const shake = reducedMotion || !shakeBurst ? 0 : (1 - shakeBurst.age / 0.65) * 4;
 
   ctx.save();
   ctx.translate(

@@ -21,6 +21,34 @@ export type GameEvent =
 
 export type GameMode = "playing" | "paused" | "respawning" | "finished";
 
+export type PlayerAnimationName =
+  | "idle"
+  | "walk"
+  | "run"
+  | "jump"
+  | "doubleJump"
+  | "wallJump"
+  | "apex"
+  | "fall"
+  | "wallSlide"
+  | "land"
+  | "hurt";
+
+export type EnemyAnimationName =
+  | "idle"
+  | "walk"
+  | "turn"
+  | "charge"
+  | "dash"
+  | "recover"
+  | "defeated";
+
+export type AnimationState<Name extends string> = {
+  name: Name;
+  time: number;
+  cycle: number;
+};
+
 export type PlayerState = Rect & {
   vx: number;
   vy: number;
@@ -35,6 +63,7 @@ export type PlayerState = Rect & {
   wallNormal: -1 | 0 | 1;
   wallJumpLock: number;
   doubleJumpAccent: number;
+  animation: AnimationState<PlayerAnimationName>;
 };
 
 export type EnemyPhase = "patrol" | "idle" | "charge" | "dash" | "recover";
@@ -48,6 +77,7 @@ export type EnemyState = Rect & {
   phase: EnemyPhase;
   phaseTime: number;
   alive: boolean;
+  animation: AnimationState<EnemyAnimationName>;
 };
 
 export type CrumbleState = Record<string, number>;
@@ -90,6 +120,10 @@ const PLAYER_WIDTH = 46;
 const PLAYER_HEIGHT = 64;
 const CRUMBLE_DELAY = 0.42;
 const CRUMBLE_RESET = 1.75;
+const WALK_SPEED = 32;
+const RUN_SPEED = 235;
+const LAND_POSE_SECONDS = 0.13;
+const TURN_POSE_SECONDS = 0.14;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -99,6 +133,66 @@ const approach = (value: number, target: number, amount: number) => {
   if (value > target) return Math.max(value - amount, target);
   return target;
 };
+
+const transitionAnimation = <Name extends string>(
+  animation: AnimationState<Name>,
+  name: Name,
+  dt: number,
+  cycleDelta = 0,
+) => {
+  if (animation.name !== name) {
+    animation.name = name;
+    animation.time = 0;
+  } else {
+    animation.time += dt;
+  }
+  animation.cycle += cycleDelta;
+};
+
+const selectPlayerAnimation = (state: GameState): PlayerAnimationName => {
+  const player = state.player;
+  if (state.mode === "respawning") return "hurt";
+  if (player.grounded) {
+    if (
+      player.animation.name === "land" &&
+      player.animation.time < LAND_POSE_SECONDS
+    ) {
+      return "land";
+    }
+    const speed = Math.abs(player.vx);
+    if (speed >= RUN_SPEED) return "run";
+    if (speed >= WALK_SPEED) return "walk";
+    return "idle";
+  }
+  if (player.wallJumpLock > 0) return "wallJump";
+  if (player.doubleJumpAccent > 0) return "doubleJump";
+  if (player.wallNormal !== 0 && player.vy > 0) return "wallSlide";
+  if (player.vy < -170) return "jump";
+  if (player.vy < 170) return "apex";
+  return "fall";
+};
+
+const updatePlayerAnimation = (
+  state: GameState,
+  dt: number,
+  forced?: PlayerAnimationName,
+) => {
+  const player = state.player;
+  const name = forced ?? selectPlayerAnimation(state);
+  const locomotionDistance =
+    name === "walk" || name === "run" ? Math.abs(player.vx) * dt : 0;
+  transitionAnimation(player.animation, name, dt, locomotionDistance);
+  if (name === "hurt" || name === "land") {
+    player.animation.cycle = 0;
+  }
+};
+
+const setEnemyAnimation = (
+  enemy: EnemyState,
+  name: EnemyAnimationName,
+  dt: number,
+  cycleDelta = 0,
+) => transitionAnimation(enemy.animation, name, dt, cycleDelta);
 
 export const overlaps = (a: Rect, b: Rect) =>
   a.x < b.x + b.width &&
@@ -162,6 +256,7 @@ export function createGame(level: LevelDefinition): GameState {
       wallNormal: 0,
       wallJumpLock: 0,
       doubleJumpAccent: 0,
+      animation: { name: "idle", time: 0, cycle: 0 },
     },
     enemies: level.enemies.map((enemy, index) => ({
       ...enemy,
@@ -169,6 +264,11 @@ export function createGame(level: LevelDefinition): GameState {
       phase: enemy.kind === "emberling" ? "patrol" : "idle",
       phaseTime: 0,
       alive: true,
+      animation: {
+        name: enemy.kind === "emberling" ? "walk" : "idle",
+        time: 0,
+        cycle: 0,
+      },
     })),
     collected: [],
     activeCheckpoint: null,
@@ -183,8 +283,14 @@ export function createGame(level: LevelDefinition): GameState {
 function cloneState(state: GameState): GameState {
   return {
     ...state,
-    player: { ...state.player },
-    enemies: state.enemies.map((enemy) => ({ ...enemy })),
+    player: {
+      ...state.player,
+      animation: { ...state.player.animation },
+    },
+    enemies: state.enemies.map((enemy) => ({
+      ...enemy,
+      animation: { ...enemy.animation },
+    })),
     collected: [...state.collected],
     checkpointPosition: { ...state.checkpointPosition },
     crumble: { ...state.crumble },
@@ -201,6 +307,7 @@ function triggerRespawn(state: GameState, events: GameEvent[]) {
   state.player.wallNormal = 0;
   state.player.wallJumpLock = 0;
   state.player.doubleJumpAccent = 0;
+  state.player.animation = { name: "hurt", time: 0, cycle: 0 };
   events.push({ type: "hurt" });
 }
 
@@ -216,17 +323,28 @@ function updateEnemies(state: GameState, dt: number) {
   const playerCenter = state.player.x + state.player.width / 2;
 
   for (const enemy of state.enemies) {
-    if (!enemy.alive) continue;
+    if (!enemy.alive) {
+      setEnemyAnimation(enemy, "defeated", dt);
+      continue;
+    }
 
     if (enemy.kind === "emberling") {
+      let turned = false;
       enemy.x += enemy.direction * 54 * dt;
       if (enemy.x <= enemy.minX) {
         enemy.x = enemy.minX;
         enemy.direction = 1;
+        turned = true;
       } else if (enemy.x >= enemy.maxX) {
         enemy.x = enemy.maxX;
         enemy.direction = -1;
+        turned = true;
       }
+      const turning =
+        turned ||
+        (enemy.animation.name === "turn" &&
+          enemy.animation.time < TURN_POSE_SECONDS);
+      setEnemyAnimation(enemy, turning ? "turn" : "walk", dt, 54 * dt);
       continue;
     }
 
@@ -238,24 +356,42 @@ function updateEnemies(state: GameState, dt: number) {
         enemy.phase = "charge";
         enemy.phaseTime = 0.48;
       }
-      continue;
+    } else {
+      enemy.phaseTime -= dt;
+      if (enemy.phase === "charge" && enemy.phaseTime <= 0) {
+        enemy.phase = "dash";
+        enemy.phaseTime = 0.72;
+      } else if (enemy.phase === "dash") {
+        enemy.x += enemy.direction * 330 * dt;
+        if (
+          enemy.x <= enemy.minX ||
+          enemy.x >= enemy.maxX ||
+          enemy.phaseTime <= 0
+        ) {
+          enemy.x = clamp(enemy.x, enemy.minX, enemy.maxX);
+          enemy.phase = "recover";
+          enemy.phaseTime = 0.72;
+        }
+      } else if (enemy.phase === "recover" && enemy.phaseTime <= 0) {
+        enemy.phase = "idle";
+        enemy.phaseTime = 0;
+      }
     }
 
-    enemy.phaseTime -= dt;
-    if (enemy.phase === "charge" && enemy.phaseTime <= 0) {
-      enemy.phase = "dash";
-      enemy.phaseTime = 0.72;
-    } else if (enemy.phase === "dash") {
-      enemy.x += enemy.direction * 330 * dt;
-      if (enemy.x <= enemy.minX || enemy.x >= enemy.maxX || enemy.phaseTime <= 0) {
-        enemy.x = clamp(enemy.x, enemy.minX, enemy.maxX);
-        enemy.phase = "recover";
-        enemy.phaseTime = 0.72;
-      }
-    } else if (enemy.phase === "recover" && enemy.phaseTime <= 0) {
-      enemy.phase = "idle";
-      enemy.phaseTime = 0;
-    }
+    const animationName: EnemyAnimationName =
+      enemy.phase === "charge"
+        ? "charge"
+        : enemy.phase === "dash"
+          ? "dash"
+          : enemy.phase === "recover"
+            ? "recover"
+            : "idle";
+    setEnemyAnimation(
+      enemy,
+      animationName,
+      dt,
+      animationName === "dash" ? 330 * dt : 0,
+    );
   }
 }
 
@@ -306,7 +442,7 @@ function resolveVertical(
   platforms: Platform[],
   dt: number,
   events: GameEvent[],
-) {
+): boolean {
   const player = state.player;
   const previousY = player.y;
   const previousBottom = previousY + player.height;
@@ -373,6 +509,7 @@ function resolveVertical(
       }
     }
   }
+  return Boolean(landingPlatform && !wasGrounded);
 }
 
 export function setPaused(state: GameState, paused: boolean): GameState {
@@ -411,6 +548,7 @@ export function stepGame(
       state.player.wallJumpLock = 0;
       state.player.doubleJumpAccent = 0;
     }
+    updatePlayerAnimation(state, dt);
     return { state, events };
   }
 
@@ -424,6 +562,7 @@ export function stepGame(
   updateCrumble(state, dt);
 
   const player = state.player;
+  let forcedPlayerAnimation: PlayerAnimationName | undefined;
   const previousPlatforms = getRuntimePlatforms(
     { elapsed: previousElapsed, crumble: state.crumble },
     level,
@@ -486,6 +625,7 @@ export function stepGame(
     player.doubleJumpAccent = 0;
     player.jumpBuffer = 0;
     player.supportPlatformId = null;
+    forcedPlayerAnimation = "wallJump";
     events.push({ type: "jump" });
   } else if (player.jumpBuffer > 0 && player.coyote > 0) {
     player.vy = -PHYSICS.jumpSpeed;
@@ -493,6 +633,7 @@ export function stepGame(
     player.coyote = 0;
     player.jumpBuffer = 0;
     player.supportPlatformId = null;
+    forcedPlayerAnimation = "jump";
     events.push({ type: "jump" });
   } else if (
     jumpPressed &&
@@ -504,6 +645,7 @@ export function stepGame(
     player.doubleJumpAccent = 0.14;
     player.jumpBuffer = 0;
     player.supportPlatformId = null;
+    forcedPlayerAnimation = "doubleJump";
     events.push({ type: "jump" });
   }
 
@@ -518,7 +660,14 @@ export function stepGame(
   ) {
     player.vy = PHYSICS.wallSlideSpeed;
   }
-  resolveVertical(state, previousPlatforms, platforms, dt, events);
+  const landed = resolveVertical(
+    state,
+    previousPlatforms,
+    platforms,
+    dt,
+    events,
+  );
+  if (landed) forcedPlayerAnimation = "land";
   updateEnemies(state, dt);
 
   for (const enemy of state.enemies) {
@@ -531,8 +680,10 @@ export function stepGame(
 
     if (stomped) {
       enemy.alive = false;
+      enemy.animation = { name: "defeated", time: 0, cycle: 0 };
       player.y = enemy.y - player.height;
       player.vy = -420;
+      forcedPlayerAnimation = "jump";
       events.push({ type: "stomp" });
     } else {
       triggerRespawn(state, events);
@@ -584,5 +735,10 @@ export function stepGame(
     }
   }
 
+  updatePlayerAnimation(
+    state,
+    dt,
+    state.player.animation.name === "hurt" ? "hurt" : forcedPlayerAnimation,
+  );
   return { state, events };
 }

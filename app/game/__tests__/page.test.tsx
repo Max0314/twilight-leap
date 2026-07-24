@@ -23,6 +23,18 @@ describe("game page", () => {
     expect(pauseSection).toContain("aria-pressed={prefs.sound}");
   });
 
+  it("lets players disable screen shake from the HUD and pause dialog", () => {
+    const source = readFileSync(new URL("../../page.tsx", import.meta.url), "utf8");
+    const pauseStart = source.indexOf('{screen === "paused" ? (');
+    const pauseEnd = source.indexOf('{screen === "finished"', pauseStart);
+    const pauseSection = source.slice(pauseStart, pauseEnd);
+
+    expect(source).toContain("screenShakeEnabled={prefs.screenShake}");
+    expect(source).toContain("关闭画面震动");
+    expect(pauseSection).toContain("toggleScreenShake");
+    expect(pauseSection).toContain("aria-pressed={prefs.screenShake}");
+  });
+
   it("does not force the game taller than a short landscape viewport", () => {
     const css = readFileSync(new URL("../../globals.css", import.meta.url), "utf8");
     expect(css).not.toMatch(/min-height:\s*(?:420|320)px/);

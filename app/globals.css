@@ -164,7 +164,8 @@ button {
   transform: translateY(-1px);
 }
 
-.sound-button span {
+.sound-button span,
+.shake-button span {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
