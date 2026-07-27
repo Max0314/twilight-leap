@@ -4,7 +4,7 @@ import test from "node:test";
 
 const root = new URL("../", import.meta.url);
 
-test("keeps the Fribench game deployment private and isolated", async () => {
+test("keeps the Fribench game deployment isolated by default", async () => {
   const [compose, dockerfile, hostNginx] = await Promise.all([
     readFile(new URL("compose.yaml", root), "utf8"),
     readFile(new URL("Dockerfile", root), "utf8"),
@@ -12,7 +12,10 @@ test("keeps the Fribench game deployment private and isolated", async () => {
   ]);
 
   assert.match(compose, /^name: fribench-twilight-leap$/m);
-  assert.match(compose, /127\.0\.0\.1:\$\{TWILIGHT_LEAP_PORT:-23002\}:8080/);
+  assert.match(
+    compose,
+    /\$\{TWILIGHT_LEAP_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{TWILIGHT_LEAP_PORT:-23002\}:8080/,
+  );
   assert.match(compose, /name: fribench-twilight-leap-edge-v1/);
   assert.match(compose, /NPM_REGISTRY:-https:\/\/registry\.npmmirror\.com/);
   assert.match(compose, /read_only: true/);

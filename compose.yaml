@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
     init: true
     ports:
-      - "127.0.0.1:${TWILIGHT_LEAP_PORT:-23002}:8080"
+      - "${TWILIGHT_LEAP_BIND_ADDRESS:-127.0.0.1}:${TWILIGHT_LEAP_PORT:-23002}:8080"
     networks:
       - edge
     read_only: true
