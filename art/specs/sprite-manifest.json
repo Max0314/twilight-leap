@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "pixelsPerUnit": 64,
+  "sheet": {
+    "width": 1024,
+    "height": 1024,
+    "columns": 4,
+    "rows": 4,
+    "cellWidth": 256,
+    "cellHeight": 256
+  },
+  "actorPivot": {
+    "x": 128,
+    "y": 224,
+    "origin": "top-left"
+  },
+  "sheets": [
+    {
+      "id": "hero-locomotion",
+      "path": "../characters/hero/hero-locomotion.png",
+      "animations": {
+        "idle": { "start": 0, "count": 4, "fps": 6, "loop": true },
+        "walk": { "start": 4, "count": 6, "fps": 8, "loop": true },
+        "run": { "start": 10, "count": 6, "fps": 12, "loop": true }
+      }
+    },
+    {
+      "id": "hero-airborne",
+      "path": "../characters/hero/hero-airborne.png",
+      "animations": {
+        "jump": { "start": 0, "count": 3, "fps": 12, "loop": false },
+        "apex": { "start": 3, "count": 2, "fps": 8, "loop": true },
+        "fall": { "start": 5, "count": 3, "fps": 8, "loop": true },
+        "doubleJump": { "start": 8, "count": 4, "fps": 12, "loop": false },
+        "wallSlide": { "start": 12, "count": 2, "fps": 8, "loop": true },
+        "wallJump": { "start": 14, "count": 2, "fps": 12, "loop": false }
+      }
+    },
+    {
+      "id": "hero-reactions",
+      "path": "../characters/hero/hero-reactions.png",
+      "animations": {
+        "land": { "start": 0, "count": 3, "fps": 12, "loop": false },
+        "hurt": { "start": 3, "count": 3, "fps": 12, "loop": false },
+        "death": { "start": 6, "count": 8, "fps": 10, "loop": false },
+        "respawn": { "start": 14, "count": 2, "fps": 8, "loop": false }
+      }
+    },
+    {
+      "id": "emberling-locomotion",
+      "path": "../characters/enemies/emberling/emberling-locomotion.png",
+      "animations": {
+        "idle": { "start": 0, "count": 4, "fps": 6, "loop": true },
+        "patrol": { "start": 4, "count": 6, "fps": 8, "loop": true },
+        "turn": { "start": 10, "count": 2, "fps": 12, "loop": false },
+        "alert": { "start": 12, "count": 4, "fps": 10, "loop": false }
+      }
+    },
+    {
+      "id": "emberling-actions",
+      "path": "../characters/enemies/emberling/emberling-actions.png",
+      "animations": {
+        "attack": { "start": 0, "count": 5, "fps": 12, "loop": false },
+        "hurt": { "start": 5, "count": 3, "fps": 12, "loop": false },
+        "stunned": { "start": 8, "count": 2, "fps": 6, "loop": true },
+        "death": { "start": 10, "count": 6, "fps": 10, "loop": false }
+      }
+    },
+    {
+      "id": "beetle-locomotion",
+      "path": "../characters/enemies/beetle/beetle-locomotion.png",
+      "animations": {
+        "idle": { "start": 0, "count": 4, "fps": 6, "loop": true },
+        "patrol": { "start": 4, "count": 6, "fps": 8, "loop": true },
+        "turn": { "start": 10, "count": 2, "fps": 10, "loop": false },
+        "alert": { "start": 12, "count": 4, "fps": 10, "loop": false }
+      }
+    },
+    {
+      "id": "beetle-actions",
+      "path": "../characters/enemies/beetle/beetle-actions.png",
+      "animations": {
+        "charge": { "start": 0, "count": 4, "fps": 10, "loop": false },
+        "dash": { "start": 4, "count": 4, "fps": 12, "loop": true },
+        "recover": { "start": 8, "count": 3, "fps": 10, "loop": false },
+        "death": { "start": 11, "count": 5, "fps": 10, "loop": false }
+      }
+    },
+    {
+      "id": "environment-modular",
+      "kind": "static-grid",
+      "path": "../environment/tiles/environment-modular.png",
+      "assets": [
+        "stonePlatformLeft",
+        "stonePlatformMiddle",
+        "stonePlatformRight",
+        "stoneWallUnderside",
+        "woodPlatformLeft",
+        "woodPlatformMiddle",
+        "woodPlatformRight",
+        "crumblePlatform",
+        "masonryWall",
+        "ruinedArch",
+        "stoneColumn",
+        "balconyRailing",
+        "supplyCrate",
+        "flowerUrn",
+        "directionSign",
+        "checkpointPedestal"
+      ]
+    },
+    {
+      "id": "environment-animated-props",
+      "path": "../environment/props/environment-animated-props.png",
+      "animations": {
+        "lantern": { "start": 0, "count": 4, "fps": 6, "loop": true },
+        "banner": { "start": 4, "count": 4, "fps": 6, "loop": true },
+        "fountain": { "start": 8, "count": 4, "fps": 8, "loop": true },
+        "vines": { "start": 12, "count": 4, "fps": 6, "loop": true }
+      }
+    },
+    {
+      "id": "vfx-gameplay",
+      "path": "../vfx/gameplay/vfx-gameplay.png",
+      "animations": {
+        "jumpDust": { "start": 0, "count": 4, "fps": 14, "loop": false },
+        "landImpact": { "start": 4, "count": 4, "fps": 14, "loop": false },
+        "starPickup": { "start": 8, "count": 4, "fps": 16, "loop": false },
+        "hurtBurst": { "start": 12, "count": 4, "fps": 16, "loop": false }
+      }
+    },
+    {
+      "id": "vfx-ambient",
+      "path": "../vfx/ambient/vfx-ambient.png",
+      "animations": {
+        "portal": { "start": 0, "count": 4, "fps": 8, "loop": true },
+        "checkpoint": { "start": 4, "count": 4, "fps": 8, "loop": true },
+        "ember": { "start": 8, "count": 4, "fps": 8, "loop": true },
+        "windWisp": { "start": 12, "count": 4, "fps": 8, "loop": true }
+      }
+    },
+    {
+      "id": "twilight-ruins-parallax",
+      "kind": "parallax-stack",
+      "path": "../scenes/parallax/twilight-ruins-parallax.png",
+      "grid": {
+        "columns": 1,
+        "rows": 4,
+        "cellWidth": 1024,
+        "cellHeight": 256
+      },
+      "layers": [
+        { "index": 0, "id": "farSkyline", "speed": 0.12 },
+        { "index": 1, "id": "midRuins", "speed": 0.28 },
+        { "index": 2, "id": "nearRuins", "speed": 0.52 },
+        { "index": 3, "id": "foreground", "speed": 0.82 }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { createAudioController, type AudioController } from "./audio";
+import { cancelHaptics, playHaptic } from "./feedback";
 import { LEVEL } from "./level";
 import {
   renderGame,
@@ -20,6 +21,11 @@ import {
   type GameState,
   type InputState,
 } from "./simulation";
+import {
+  SPRITE_SHEET_PATHS,
+  type SpriteImages,
+  type SpriteSheetKey,
+} from "./sprites";
 
 export type GameSnapshot = {
   stars: number;
@@ -99,6 +105,16 @@ const eventPosition = (event: GameEvent, state: GameState) => {
       y: LEVEL.finish.y + LEVEL.finish.height / 2,
     };
   }
+  if (
+    event.type === "jump" ||
+    event.type === "land" ||
+    event.type === "stomp"
+  ) {
+    return {
+      x: state.player.x + state.player.width / 2,
+      y: state.player.y + state.player.height,
+    };
+  }
   return {
     x: state.player.x + state.player.width / 2,
     y: state.player.y + state.player.height / 2,
@@ -121,6 +137,7 @@ export function GameCanvas({
   const stateRef = useRef(createGame(LEVEL));
   const keyboardRef = useRef<InputState>({ left: false, right: false, jump: false });
   const atlasRef = useRef<HTMLImageElement | null>(null);
+  const spritesRef = useRef<SpriteImages>({});
   const audioRef = useRef<AudioController | null>(null);
   const burstsRef = useRef<VisualBurst[]>([]);
   const burstIdRef = useRef(0);
@@ -180,6 +197,10 @@ export function GameCanvas({
   }, [soundEnabled]);
 
   useEffect(() => {
+    if (!screenShakeEnabled) cancelHaptics();
+  }, [screenShakeEnabled]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const context = canvas.getContext("2d", { alpha: false });
@@ -197,6 +218,28 @@ export function GameCanvas({
       if (atlasRef.current === atlas) atlasRef.current = null;
     };
     atlas.addEventListener("error", handleAtlasError);
+
+    const spriteErrorHandlers: Array<{
+      image: HTMLImageElement;
+      handler: () => void;
+    }> = [];
+    const spriteImages: SpriteImages = {};
+    for (const [key, path] of Object.entries(SPRITE_SHEET_PATHS) as Array<
+      [SpriteSheetKey, string]
+    >) {
+      const image = new Image();
+      image.decoding = "async";
+      const handleError = () => {
+        if (spritesRef.current[key] === image) {
+          delete spritesRef.current[key];
+        }
+      };
+      image.addEventListener("error", handleError);
+      image.src = path;
+      spriteImages[key] = image;
+      spriteErrorHandlers.push({ image, handler: handleError });
+    }
+    spritesRef.current = spriteImages;
 
     const mediaReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const mediaCoarse = window.matchMedia("(pointer: coarse)");
@@ -293,6 +336,11 @@ export function GameCanvas({
 
           for (const event of result.events) {
             audio.play(event);
+            playHaptic(
+              event,
+              screenShakeRef.current,
+              reducedMotion,
+            );
             const point = eventPosition(event, result.state);
             burstsRef.current.push({
               id: burstIdRef.current++,
@@ -334,11 +382,26 @@ export function GameCanvas({
         lowQuality,
         time: now / 1_000,
         atlas: atlasRef.current,
+        sprites: spritesRef.current,
         bursts: burstsRef.current,
       });
 
       if (now - lastSnapshotAt > 100) {
         lastSnapshotAt = now;
+        canvas.dataset.playerAnimation =
+          stateRef.current.player.animation.name;
+        canvas.dataset.playerX = stateRef.current.player.x.toFixed(1);
+        canvas.dataset.enemyAnimations = stateRef.current.enemies
+          .map((enemy) => `${enemy.id}:${enemy.animation.name}`)
+          .join(",");
+        canvas.dataset.readySpriteSheets = String(
+          Object.values(spritesRef.current).filter(
+            (image) =>
+              image.complete &&
+              image.naturalWidth > 0 &&
+              image.naturalHeight > 0,
+          ).length,
+        );
         callbacksRef.current.onSnapshot({
           stars: stateRef.current.collected.length,
           time: stateRef.current.elapsed,
@@ -360,6 +423,11 @@ export function GameCanvas({
       document.removeEventListener("visibilitychange", handleVisibility);
       mediaReducedMotion.removeEventListener("change", handleReducedMotion);
       atlas.removeEventListener("error", handleAtlasError);
+      for (const { image, handler } of spriteErrorHandlers) {
+        image.removeEventListener("error", handler);
+      }
+      spritesRef.current = {};
+      cancelHaptics();
       audio.dispose();
       audioRef.current = null;
     };

@@ -30,7 +30,7 @@ describe("game page", () => {
     const pauseSection = source.slice(pauseStart, pauseEnd);
 
     expect(source).toContain("screenShakeEnabled={prefs.screenShake}");
-    expect(source).toContain("关闭画面震动");
+    expect(source).toContain("关闭震动反馈");
     expect(pauseSection).toContain("toggleScreenShake");
     expect(pauseSection).toContain("aria-pressed={prefs.screenShake}");
   });

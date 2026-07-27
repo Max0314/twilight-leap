@@ -32,16 +32,20 @@ export type PlayerAnimationName =
   | "fall"
   | "wallSlide"
   | "land"
-  | "hurt";
+  | "hurt"
+  | "death"
+  | "respawn";
 
 export type EnemyAnimationName =
   | "idle"
-  | "walk"
+  | "patrol"
   | "turn"
+  | "alert"
+  | "attack"
   | "charge"
   | "dash"
   | "recover"
-  | "defeated";
+  | "death";
 
 export type AnimationState<Name extends string> = {
   name: Name;
@@ -66,7 +70,14 @@ export type PlayerState = Rect & {
   animation: AnimationState<PlayerAnimationName>;
 };
 
-export type EnemyPhase = "patrol" | "idle" | "charge" | "dash" | "recover";
+export type EnemyPhase =
+  | "patrol"
+  | "turn"
+  | "alert"
+  | "attack"
+  | "charge"
+  | "dash"
+  | "recover";
 
 export type EnemyState = Rect & {
   id: string;
@@ -91,6 +102,7 @@ export type GameState = {
   checkpointPosition: Vec;
   elapsed: number;
   respawnTimer: number;
+  respawnPlaced: boolean;
   finishEmitted: boolean;
   crumble: CrumbleState;
 };
@@ -112,7 +124,9 @@ export const PHYSICS = {
   maxAirJumps: 1,
   coyoteSeconds: 0.11,
   jumpBufferSeconds: 0.12,
-  respawnSeconds: 0.55,
+  respawnSeconds: 1.23,
+  respawnRevealSeconds: 0.25,
+  respawnHurtSeconds: 0.18,
   invulnerableSeconds: 1,
 } as const;
 
@@ -124,6 +138,8 @@ const WALK_SPEED = 32;
 const RUN_SPEED = 235;
 const LAND_POSE_SECONDS = 0.13;
 const TURN_POSE_SECONDS = 0.14;
+const EMBER_ALERT_DISTANCE = 260;
+const BEETLE_ALERT_DISTANCE = 390;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -151,7 +167,9 @@ const transitionAnimation = <Name extends string>(
 
 const selectPlayerAnimation = (state: GameState): PlayerAnimationName => {
   const player = state.player;
-  if (state.mode === "respawning") return "hurt";
+  if (state.mode === "respawning") {
+    return state.respawnPlaced ? "respawn" : "death";
+  }
   if (player.grounded) {
     if (
       player.animation.name === "land" &&
@@ -182,7 +200,12 @@ const updatePlayerAnimation = (
   const locomotionDistance =
     name === "walk" || name === "run" ? Math.abs(player.vx) * dt : 0;
   transitionAnimation(player.animation, name, dt, locomotionDistance);
-  if (name === "hurt" || name === "land") {
+  if (
+    name === "hurt" ||
+    name === "land" ||
+    name === "death" ||
+    name === "respawn"
+  ) {
     player.animation.cycle = 0;
   }
 };
@@ -261,11 +284,11 @@ export function createGame(level: LevelDefinition): GameState {
     enemies: level.enemies.map((enemy, index) => ({
       ...enemy,
       direction: index % 2 === 0 ? 1 : -1,
-      phase: enemy.kind === "emberling" ? "patrol" : "idle",
+      phase: "patrol",
       phaseTime: 0,
       alive: true,
       animation: {
-        name: enemy.kind === "emberling" ? "walk" : "idle",
+        name: "patrol",
         time: 0,
         cycle: 0,
       },
@@ -275,6 +298,7 @@ export function createGame(level: LevelDefinition): GameState {
     checkpointPosition: { ...level.spawn },
     elapsed: 0,
     respawnTimer: 0,
+    respawnPlaced: false,
     finishEmitted: false,
     crumble: {},
   };
@@ -301,6 +325,7 @@ function triggerRespawn(state: GameState, events: GameEvent[]) {
   if (state.mode === "respawning" || state.player.invulnerable > 0) return;
   state.mode = "respawning";
   state.respawnTimer = PHYSICS.respawnSeconds;
+  state.respawnPlaced = false;
   state.player.vx = 0;
   state.player.vy = 0;
   state.player.supportPlatformId = null;
@@ -324,73 +349,81 @@ function updateEnemies(state: GameState, dt: number) {
 
   for (const enemy of state.enemies) {
     if (!enemy.alive) {
-      setEnemyAnimation(enemy, "defeated", dt);
+      setEnemyAnimation(enemy, "death", dt);
       continue;
     }
 
-    if (enemy.kind === "emberling") {
-      let turned = false;
-      enemy.x += enemy.direction * 54 * dt;
-      if (enemy.x <= enemy.minX) {
-        enemy.x = enemy.minX;
-        enemy.direction = 1;
-        turned = true;
-      } else if (enemy.x >= enemy.maxX) {
-        enemy.x = enemy.maxX;
-        enemy.direction = -1;
-        turned = true;
-      }
-      const turning =
-        turned ||
-        (enemy.animation.name === "turn" &&
-          enemy.animation.time < TURN_POSE_SECONDS);
-      setEnemyAnimation(enemy, turning ? "turn" : "walk", dt, 54 * dt);
-      continue;
-    }
+    enemy.phaseTime = Math.max(0, enemy.phaseTime - dt);
+    const enemyCenter = enemy.x + enemy.width / 2;
+    const sameLane = Math.abs(state.player.y - enemy.y) < 150;
+    const distanceToPlayer = Math.abs(playerCenter - enemyCenter);
+    let cycleDelta = 0;
 
-    if (enemy.phase === "idle") {
-      const enemyCenter = enemy.x + enemy.width / 2;
-      const sameLane = Math.abs(state.player.y - enemy.y) < 150;
-      if (sameLane && Math.abs(playerCenter - enemyCenter) < 380) {
+    if (enemy.phase === "patrol") {
+      const alertDistance =
+        enemy.kind === "emberling"
+          ? EMBER_ALERT_DISTANCE
+          : BEETLE_ALERT_DISTANCE;
+      if (enemy.phaseTime === 0 && sameLane && distanceToPlayer < alertDistance) {
         enemy.direction = playerCenter < enemyCenter ? -1 : 1;
-        enemy.phase = "charge";
-        enemy.phaseTime = 0.48;
-      }
-    } else {
-      enemy.phaseTime -= dt;
-      if (enemy.phase === "charge" && enemy.phaseTime <= 0) {
-        enemy.phase = "dash";
-        enemy.phaseTime = 0.72;
-      } else if (enemy.phase === "dash") {
-        enemy.x += enemy.direction * 330 * dt;
-        if (
-          enemy.x <= enemy.minX ||
-          enemy.x >= enemy.maxX ||
-          enemy.phaseTime <= 0
-        ) {
-          enemy.x = clamp(enemy.x, enemy.minX, enemy.maxX);
-          enemy.phase = "recover";
-          enemy.phaseTime = 0.72;
+        enemy.phase = "alert";
+        enemy.phaseTime = enemy.kind === "emberling" ? 0.32 : 0.24;
+      } else {
+        const speed = enemy.kind === "emberling" ? 54 : 26;
+        enemy.x += enemy.direction * speed * dt;
+        cycleDelta = speed * dt;
+        if (enemy.x <= enemy.minX) {
+          enemy.x = enemy.minX;
+          enemy.direction = 1;
+          enemy.phase = "turn";
+          enemy.phaseTime = TURN_POSE_SECONDS;
+        } else if (enemy.x >= enemy.maxX) {
+          enemy.x = enemy.maxX;
+          enemy.direction = -1;
+          enemy.phase = "turn";
+          enemy.phaseTime = TURN_POSE_SECONDS;
         }
-      } else if (enemy.phase === "recover" && enemy.phaseTime <= 0) {
-        enemy.phase = "idle";
-        enemy.phaseTime = 0;
       }
+    } else if (enemy.phase === "turn" && enemy.phaseTime === 0) {
+      enemy.phase = "patrol";
+      enemy.phaseTime = 0.2;
+    } else if (enemy.phase === "alert" && enemy.phaseTime === 0) {
+      enemy.phase = enemy.kind === "emberling" ? "attack" : "charge";
+      enemy.phaseTime = enemy.kind === "emberling" ? 0.42 : 0.48;
+    } else if (enemy.phase === "attack") {
+      enemy.x += enemy.direction * 115 * dt;
+      enemy.x = clamp(enemy.x, enemy.minX, enemy.maxX);
+      cycleDelta = 115 * dt;
+      if (enemy.phaseTime === 0) {
+        enemy.phase = "recover";
+        enemy.phaseTime = 0.5;
+      }
+    } else if (enemy.phase === "charge" && enemy.phaseTime === 0) {
+      enemy.phase = "dash";
+      enemy.phaseTime = 0.72;
+    } else if (enemy.phase === "dash") {
+      enemy.x += enemy.direction * 330 * dt;
+      cycleDelta = 330 * dt;
+      if (
+        enemy.x <= enemy.minX ||
+        enemy.x >= enemy.maxX ||
+        enemy.phaseTime === 0
+      ) {
+        enemy.x = clamp(enemy.x, enemy.minX, enemy.maxX);
+        enemy.phase = "recover";
+        enemy.phaseTime = 0.72;
+      }
+    } else if (enemy.phase === "recover" && enemy.phaseTime === 0) {
+      enemy.phase = "patrol";
+      enemy.phaseTime = 0.65;
     }
 
-    const animationName: EnemyAnimationName =
-      enemy.phase === "charge"
-        ? "charge"
-        : enemy.phase === "dash"
-          ? "dash"
-          : enemy.phase === "recover"
-            ? "recover"
-            : "idle";
+    const animationName: EnemyAnimationName = enemy.phase;
     setEnemyAnimation(
       enemy,
       animationName,
       dt,
-      animationName === "dash" ? 330 * dt : 0,
+      cycleDelta,
     );
   }
 }
@@ -534,8 +567,11 @@ export function stepGame(
 
   if (state.mode === "respawning") {
     state.respawnTimer -= dt;
-    if (state.respawnTimer <= 0) {
-      state.mode = "playing";
+    if (
+      !state.respawnPlaced &&
+      state.respawnTimer <= PHYSICS.respawnRevealSeconds
+    ) {
+      state.respawnPlaced = true;
       state.player.x = state.checkpointPosition.x;
       state.player.y = state.checkpointPosition.y;
       state.player.vx = 0;
@@ -548,7 +584,17 @@ export function stepGame(
       state.player.wallJumpLock = 0;
       state.player.doubleJumpAccent = 0;
     }
-    updatePlayerAnimation(state, dt);
+    const respawnAnimation: PlayerAnimationName = state.respawnPlaced
+      ? "respawn"
+      : state.respawnTimer >
+          PHYSICS.respawnSeconds - PHYSICS.respawnHurtSeconds
+        ? "hurt"
+        : "death";
+    updatePlayerAnimation(state, dt, respawnAnimation);
+    if (state.respawnTimer <= 0) {
+      state.mode = "playing";
+      state.respawnTimer = 0;
+    }
     return { state, events };
   }
 
@@ -680,7 +726,7 @@ export function stepGame(
 
     if (stomped) {
       enemy.alive = false;
-      enemy.animation = { name: "defeated", time: 0, cycle: 0 };
+      enemy.animation = { name: "death", time: 0, cycle: 0 };
       player.y = enemy.y - player.height;
       player.vy = -420;
       forcedPlayerAnimation = "jump";

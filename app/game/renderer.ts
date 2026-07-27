@@ -5,6 +5,16 @@ import {
   type GameEvent,
   type GameState,
 } from "./simulation";
+import {
+  BEETLE_CLIPS,
+  EMBERLING_CLIPS,
+  HERO_CLIPS,
+  SPRITE_CELL_SIZE,
+  frameFromClip,
+  isSpriteReady,
+  type SpriteFrame,
+  type SpriteImages,
+} from "./sprites";
 import type { LevelDefinition, Platform, Rect } from "./types";
 
 export const GAME_ATLAS_SIZE = 1_254;
@@ -13,7 +23,7 @@ type AtlasFrame = { x: number; y: number; width: number; height: number };
 
 export type HeroPose = {
   animation: GameState["player"]["animation"]["name"];
-  frame: AtlasFrame;
+  frame: SpriteFrame;
   width: number;
   height: number;
   anchorX: number;
@@ -24,7 +34,7 @@ export type HeroPose = {
 
 export type EnemyPose = {
   animation: EnemyState["animation"]["name"];
-  frame: AtlasFrame;
+  frame: SpriteFrame;
   width: number;
   height: number;
   anchorX: number;
@@ -87,6 +97,7 @@ export type RenderOptions = {
   lowQuality: boolean;
   time: number;
   atlas: HTMLImageElement | null;
+  sprites: SpriteImages;
   bursts: VisualBurst[];
 };
 
@@ -158,6 +169,92 @@ const drawAtlas = (
     return false;
   } finally {
     ctx.restore();
+  }
+};
+
+const drawSpriteFrame = (
+  ctx: CanvasRenderingContext2D,
+  sprites: SpriteImages,
+  frame: SpriteFrame,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  flip = false,
+  alpha = 1,
+) => {
+  const image = sprites[frame.sheet];
+  if (!isSpriteReady(image)) return false;
+  const columns = frame.columns ?? 4;
+  const rows = frame.rows ?? 4;
+  const sourceWidth = image.naturalWidth / columns;
+  const sourceHeight = image.naturalHeight / rows;
+  const sourceX = (frame.index % columns) * sourceWidth;
+  const sourceY = Math.floor(frame.index / columns) * sourceHeight;
+
+  ctx.save();
+  try {
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = false;
+    if (flip) {
+      ctx.translate(x + width, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        width,
+        height,
+      );
+    } else {
+      ctx.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        x,
+        y,
+        width,
+        height,
+      );
+    }
+    return true;
+  } catch {
+    return false;
+  } finally {
+    ctx.restore();
+  }
+};
+
+const repeatSpriteStrip = (
+  ctx: CanvasRenderingContext2D,
+  sprites: SpriteImages,
+  frame: SpriteFrame,
+  offset: number,
+  y: number,
+  tileWidth: number,
+  tileHeight: number,
+  viewportWidth: number,
+  alpha: number,
+) => {
+  const start = -(((offset % tileWidth) + tileWidth) % tileWidth) - tileWidth;
+  for (let x = start; x < viewportWidth + tileWidth; x += tileWidth) {
+    drawSpriteFrame(
+      ctx,
+      sprites,
+      frame,
+      x,
+      y,
+      tileWidth,
+      tileHeight,
+      false,
+      alpha,
+    );
   }
 };
 
@@ -246,6 +343,7 @@ const platformFrame = (platform: Platform) => {
 const drawPlatform = (
   ctx: CanvasRenderingContext2D,
   atlas: HTMLImageElement | null,
+  sprites: SpriteImages,
   platform: Platform,
   cameraX: number,
   scale: number,
@@ -262,16 +360,187 @@ const drawPlatform = (
   ctx.fillStyle = body;
   ctx.fillRect(x, y + tileHeight * 0.42, width, Math.max(0, height - tileHeight * 0.42));
 
-  const frame = platformFrame(platform);
-  const chunkWidth = Math.max(70 * scale, 64);
-  for (let offset = 0; offset < width; offset += chunkWidth) {
-    const drawWidth = Math.min(chunkWidth + 2, width - offset + 2);
-    drawAtlas(ctx, atlas, frame, x + offset, y - tileHeight * 0.28, drawWidth, tileHeight);
+  if (isSpriteReady(sprites.environmentTiles)) {
+    const stone = platform.kind !== "wood" && platform.kind !== "moving";
+    const startFrame = platform.kind === "crumble" ? 7 : stone ? 0 : 4;
+    const middleFrame = platform.kind === "crumble" ? 7 : stone ? 1 : 5;
+    const endFrame = platform.kind === "crumble" ? 7 : stone ? 2 : 6;
+    const cellSize = 140 * scale;
+    const step = 120 * scale;
+    const pieceCount = Math.max(1, Math.ceil(width / step));
+    for (let index = 0; index < pieceCount; index += 1) {
+      const frameIndex =
+        index === 0 ? startFrame : index === pieceCount - 1 ? endFrame : middleFrame;
+      const sourceTop =
+        frameIndex === 0
+          ? 59
+          : frameIndex === 1 || frameIndex === 2
+            ? 64
+            : frameIndex === 4 || frameIndex === 6 || frameIndex === 7
+              ? 61
+              : 48;
+      drawSpriteFrame(
+        ctx,
+        sprites,
+        { sheet: "environmentTiles", index: frameIndex },
+        x + index * step - 8 * scale,
+        y - (sourceTop / SPRITE_CELL_SIZE) * cellSize,
+        cellSize,
+        cellSize,
+      );
+    }
+  } else {
+    const frame = platformFrame(platform);
+    const chunkWidth = Math.max(70 * scale, 64);
+    for (let offset = 0; offset < width; offset += chunkWidth) {
+      const drawWidth = Math.min(chunkWidth + 2, width - offset + 2);
+      drawAtlas(
+        ctx,
+        atlas,
+        frame,
+        x + offset,
+        y - tileHeight * 0.28,
+        drawWidth,
+        tileHeight,
+      );
+    }
   }
 
   ctx.fillStyle = "rgba(255,211,132,.18)";
   ctx.fillRect(x, y, width, Math.max(2, scale * 2));
-}
+};
+
+type SceneProp = {
+  kind: "lantern" | "banner" | "fountain" | "vines";
+  x: number;
+  y: number;
+  size: number;
+};
+
+const SCENE_PROPS: SceneProp[] = [
+  { kind: "lantern", x: 980, y: 382, size: 178 },
+  { kind: "banner", x: 1_390, y: 330, size: 184 },
+  { kind: "fountain", x: 1_820, y: 704, size: 190 },
+  { kind: "lantern", x: 2_360, y: 390, size: 176 },
+  { kind: "vines", x: 2_760, y: 372, size: 176 },
+  { kind: "banner", x: 3_310, y: 344, size: 180 },
+  { kind: "fountain", x: 3_730, y: 704, size: 188 },
+  { kind: "lantern", x: 4_420, y: 382, size: 176 },
+  { kind: "vines", x: 4_860, y: 372, size: 180 },
+  { kind: "banner", x: 5_720, y: 284, size: 180 },
+  { kind: "fountain", x: 6_510, y: 704, size: 188 },
+];
+
+const PROP_FRAME_START = {
+  lantern: 0,
+  banner: 4,
+  fountain: 8,
+  vines: 12,
+} as const;
+
+const drawAnimatedSceneProps = (
+  ctx: CanvasRenderingContext2D,
+  sprites: SpriteImages,
+  cameraX: number,
+  viewWorldWidth: number,
+  scale: number,
+  time: number,
+) => {
+  if (!isSpriteReady(sprites.environmentProps)) return;
+  for (const prop of SCENE_PROPS) {
+    if (
+      prop.x + prop.size < cameraX - 80 ||
+      prop.x - prop.size > cameraX + viewWorldWidth + 80
+    ) {
+      continue;
+    }
+    const size = prop.size * scale;
+    const index =
+      PROP_FRAME_START[prop.kind] + Math.floor(time * (prop.kind === "fountain" ? 8 : 6)) % 4;
+    const anchoredY =
+      prop.kind === "fountain"
+        ? prop.y * scale - size * (248 / SPRITE_CELL_SIZE)
+        : prop.y * scale - size * (8 / SPRITE_CELL_SIZE);
+    drawSpriteFrame(
+      ctx,
+      sprites,
+      { sheet: "environmentProps", index },
+      (prop.x - cameraX) * scale - size / 2,
+      anchoredY,
+      size,
+      size,
+      false,
+      0.96,
+    );
+  }
+};
+
+const drawAmbientSpriteEffects = (
+  ctx: CanvasRenderingContext2D,
+  sprites: SpriteImages,
+  cameraX: number,
+  viewWorldWidth: number,
+  scale: number,
+  time: number,
+  reducedMotion: boolean,
+) => {
+  if (!isSpriteReady(sprites.ambientVfx)) return;
+  const emberPositions = [
+    { x: 720, y: 430 },
+    { x: 2_120, y: 380 },
+    { x: 4_020, y: 430 },
+    { x: 5_320, y: 350 },
+    { x: 6_620, y: 430 },
+  ];
+  for (const [index, point] of emberPositions.entries()) {
+    if (point.x < cameraX - 100 || point.x > cameraX + viewWorldWidth + 100) {
+      continue;
+    }
+    const size = 88 * scale;
+    const bob = reducedMotion ? 0 : Math.sin(time * 1.7 + index) * 12;
+    drawSpriteFrame(
+      ctx,
+      sprites,
+      {
+        sheet: "ambientVfx",
+        index: 8 + Math.floor(time * 8 + index) % 4,
+      },
+      (point.x - cameraX) * scale - size / 2,
+      (point.y + bob) * scale - size / 2,
+      size,
+      size,
+      false,
+      0.72,
+    );
+  }
+
+  if (reducedMotion) return;
+  for (const [index, point] of [
+    { x: 1_140, y: 330 },
+    { x: 3_960, y: 300 },
+    { x: 5_940, y: 270 },
+  ].entries()) {
+    if (point.x < cameraX - 160 || point.x > cameraX + viewWorldWidth + 160) {
+      continue;
+    }
+    const size = 150 * scale;
+    const drift = ((time * 18 + index * 41) % 90) - 45;
+    drawSpriteFrame(
+      ctx,
+      sprites,
+      {
+        sheet: "ambientVfx",
+        index: 12 + Math.floor(time * 8 + index) % 4,
+      },
+      (point.x + drift - cameraX) * scale - size / 2,
+      point.y * scale - size / 2,
+      size,
+      size,
+      false,
+      0.46,
+    );
+  }
+};
 
 const drawSpikes = (
   ctx: CanvasRenderingContext2D,
@@ -328,108 +597,81 @@ const drawFallbackDiamond = (
   ctx.restore();
 };
 
-const cycleBeat = (distance: number, beatDistance: number, beats = 4) =>
-  Math.floor(distance / beatDistance) % beats;
-
 export const getHeroPose = (state: GameState): HeroPose => {
   const player = state.player;
   const { animation } = player;
-  let frame: AtlasFrame = ATLAS_FRAMES.heroIdle;
+  const clip = HERO_CLIPS[animation.name];
+  const frame = frameFromClip(
+    clip,
+    animation.time,
+    animation.name === "walk" || animation.name === "run"
+      ? animation.cycle
+      : undefined,
+  );
   let scale = 1;
   let offsetY = 0;
   let rotation = 0;
 
   switch (animation.name) {
     case "idle":
-      offsetY = Math.sin(animation.time * 2.8) * 0.8;
+      offsetY = Math.sin(animation.time * 2.8) * 0.45;
       break;
-    case "walk": {
-      const phase = cycleBeat(animation.cycle, 15);
-      const frames = [
-        ATLAS_FRAMES.heroIdle,
-        ATLAS_FRAMES.heroRunA,
-        ATLAS_FRAMES.heroIdle,
-        ATLAS_FRAMES.heroRunB,
-      ] as const;
-      const poseScale = [0.99, 1, 0.985, 1] as const;
-      const poseBob = [0, -1.2, 0, -0.8] as const;
-      frame = frames[phase];
-      scale = poseScale[phase];
-      offsetY = poseBob[phase];
-      rotation = Math.sign(player.vx) * 0.012;
+    case "walk":
+      rotation = Math.sign(player.vx) * 0.008;
       break;
-    }
-    case "run": {
-      const phase = cycleBeat(animation.cycle, 20);
-      const frames = [
-        ATLAS_FRAMES.heroRunA,
-        ATLAS_FRAMES.heroRunB,
-        ATLAS_FRAMES.heroRunA,
-        ATLAS_FRAMES.heroRunB,
-      ] as const;
-      const poseScale = [1, 0.975, 1.015, 0.99] as const;
-      const poseBob = [0, -2, 0.4, -1.1] as const;
-      frame = frames[phase];
-      scale = poseScale[phase];
-      offsetY = poseBob[phase];
-      rotation = Math.sign(player.vx) * 0.036;
+    case "run":
+      rotation = Math.sign(player.vx) * 0.018;
       break;
-    }
     case "jump":
-      frame = ATLAS_FRAMES.heroJump;
       scale = 1.015;
-      rotation = player.facing * -0.025;
+      rotation = player.facing * -0.012;
       break;
     case "doubleJump": {
       const progress = Math.min(1, animation.time / 0.14);
-      frame = progress < 0.48 ? ATLAS_FRAMES.heroApex : ATLAS_FRAMES.heroJump;
-      scale = 1.055 - progress * 0.03;
+      scale = 1.035 - progress * 0.02;
       offsetY = -2 * (1 - progress);
-      rotation = player.facing * (-0.13 + progress * 0.09);
+      rotation = player.facing * (-0.065 + progress * 0.045);
       break;
     }
     case "wallJump": {
       const progress = Math.min(1, animation.time / 0.12);
-      frame = ATLAS_FRAMES.heroJump;
-      scale = 1.04 - progress * 0.025;
+      scale = 1.025 - progress * 0.015;
       offsetY = -1;
-      rotation = player.facing * (-0.15 + progress * 0.06);
+      rotation = player.facing * (-0.075 + progress * 0.035);
       break;
     }
     case "apex":
-      frame = ATLAS_FRAMES.heroApex;
       offsetY = -1.5;
-      rotation = player.facing * -0.012;
+      rotation = player.facing * -0.006;
       break;
     case "fall":
-      frame = ATLAS_FRAMES.heroFall;
-      rotation = Math.sign(player.vx) * 0.022;
+      rotation = Math.sign(player.vx) * 0.012;
       break;
     case "wallSlide":
-      frame = ATLAS_FRAMES.heroFall;
-      offsetY = 1.5 + Math.sin(animation.time * 15) * 0.45;
-      rotation = player.wallNormal * 0.085;
+      offsetY = 1 + Math.sin(animation.time * 15) * 0.3;
+      rotation = player.wallNormal * 0.035;
       break;
     case "land": {
       const progress = Math.min(1, animation.time / 0.13);
-      frame =
-        progress < 0.38 ? ATLAS_FRAMES.heroFall : ATLAS_FRAMES.heroIdle;
-      scale = 0.94 + progress * 0.06;
-      offsetY = 2.4 * (1 - progress);
+      scale = 0.97 + progress * 0.03;
+      offsetY = 1.4 * (1 - progress);
       break;
     }
     case "hurt": {
-      const progress = Math.min(1, animation.time / 0.55);
-      frame = ATLAS_FRAMES.heroFall;
-      scale = 1 - progress * 0.08;
-      offsetY = -Math.sin(progress * Math.PI) * 9;
-      rotation = player.facing * (0.24 + progress * 0.55);
+      const progress = Math.min(1, animation.time / 0.18);
+      offsetY = -Math.sin(progress * Math.PI) * 4;
+      rotation = player.facing * progress * 0.08;
       break;
     }
+    case "death":
+      break;
+    case "respawn":
+      scale = 1 + Math.sin(Math.min(1, animation.time / 0.25) * Math.PI) * 0.025;
+      break;
   }
 
-  const height = 112 * scale;
-  const width = height * (frame.width / frame.height);
+  const height = 196 * scale;
+  const width = height;
   return {
     animation: animation.name,
     frame,
@@ -445,75 +687,41 @@ export const getHeroPose = (state: GameState): HeroPose => {
 export const getEnemyPose = (enemy: EnemyState): EnemyPose => {
   const { animation } = enemy;
   const isBeetle = enemy.kind === "beetle";
-  let frame: AtlasFrame = isBeetle
-    ? ATLAS_FRAMES.beetleIdle
-    : ATLAS_FRAMES.emberIdle;
+  const clip =
+    enemy.kind === "beetle"
+      ? BEETLE_CLIPS[animation.name as keyof typeof BEETLE_CLIPS]
+      : EMBERLING_CLIPS[animation.name as keyof typeof EMBERLING_CLIPS];
+  const fallbackClip = isBeetle ? BEETLE_CLIPS.idle : EMBERLING_CLIPS.idle;
+  const resolvedClip = clip ?? fallbackClip;
+  const frame = frameFromClip(
+    resolvedClip,
+    animation.time,
+    animation.name === "patrol" || animation.name === "dash"
+      ? animation.cycle
+      : undefined,
+  );
   let scale = 1;
   let offsetX = 0;
   let offsetY = 0;
-  let rotation = 0;
+  const rotation = 0;
   let alpha = 1;
 
-  if (enemy.kind === "emberling") {
-    if (animation.name === "walk") {
-      const phase = cycleBeat(animation.cycle, 9);
-      frame =
-        phase === 0 || phase === 2
-          ? ATLAS_FRAMES.emberIdle
-          : ATLAS_FRAMES.emberWalk;
-      scale = phase === 0 || phase === 2 ? 0.98 : 1;
-      offsetY = phase === 1 ? -1.8 : phase === 3 ? -1 : 0;
-      rotation = enemy.direction * (phase === 1 ? 0.025 : -0.012);
-    } else if (animation.name === "turn") {
-      frame = ATLAS_FRAMES.emberIdle;
-      const progress = Math.min(1, animation.time / 0.14);
-      scale = 0.94 + Math.sin(progress * Math.PI) * 0.045;
-      offsetY = Math.sin(progress * Math.PI) * -2;
-      rotation = enemy.direction * Math.sin(progress * Math.PI) * 0.05;
-    } else if (animation.name === "defeated") {
-      const progress = Math.min(1, animation.time / 0.34);
-      frame = ATLAS_FRAMES.emberWalk;
-      offsetX = enemy.direction * progress * 9;
-      offsetY = -Math.sin(progress * Math.PI) * 13;
-      rotation = enemy.direction * progress * 1.2;
-      alpha = 1 - progress;
-    }
-  } else {
-    switch (animation.name) {
-      case "charge":
-        frame = ATLAS_FRAMES.beetleCharge;
-        offsetX = Math.sin(animation.time * 48) * 1.4;
-        scale = 1 + Math.min(0.035, animation.time * 0.08);
-        rotation = enemy.direction * -0.025;
-        break;
-      case "dash":
-        frame = ATLAS_FRAMES.beetleDash;
-        offsetY = 1 + Math.sin(animation.cycle * 0.08) * 0.7;
-        rotation = enemy.direction * 0.018;
-        break;
-      case "recover":
-        frame = ATLAS_FRAMES.beetleStunned;
-        offsetY = Math.sin(animation.time * 16) * 1.4;
-        rotation = Math.sin(animation.time * 18) * 0.035;
-        break;
-      case "defeated": {
-        const progress = Math.min(1, animation.time / 0.38);
-        frame = ATLAS_FRAMES.beetleStunned;
-        offsetY = -Math.sin(progress * Math.PI) * 8;
-        rotation = enemy.direction * progress * 0.28;
-        alpha = 1 - progress;
-        break;
-      }
-      default:
-        frame = ATLAS_FRAMES.beetleIdle;
-        scale = 1 + Math.sin(animation.time * 2.6) * 0.008;
-        break;
-    }
+  if (animation.name === "charge") {
+    offsetX = Math.sin(animation.time * 48) * 0.8;
+    scale = 1 + Math.min(0.02, animation.time * 0.05);
+  } else if (animation.name === "dash") {
+    offsetY = Math.sin(animation.cycle * 0.08) * 0.45;
+  } else if (animation.name === "recover") {
+    offsetY = Math.sin(animation.time * 16) * 0.65;
+  } else if (animation.name === "death") {
+    alpha = Math.max(0, 1 - Math.max(0, animation.time - 0.5) / 0.2);
+  } else if (animation.name === "idle") {
+    scale = 1 + Math.sin(animation.time * 2.6) * 0.006;
   }
 
-  const baseHeight = isBeetle ? 86 : 76;
+  const baseHeight = isBeetle ? 188 : 132;
   const height = baseHeight * scale;
-  const width = height * (frame.width / frame.height);
+  const width = height;
   return {
     animation: animation.name,
     frame,
@@ -531,6 +739,7 @@ export const getEnemyPose = (enemy: EnemyState): EnemyPose => {
 const drawWorldEntities = (
   ctx: CanvasRenderingContext2D,
   atlas: HTMLImageElement | null,
+  sprites: SpriteImages,
   state: GameState,
   level: LevelDefinition,
   cameraX: number,
@@ -540,48 +749,125 @@ const drawWorldEntities = (
   for (const star of level.stars) {
     if (state.collected.includes(star.id)) continue;
     const bob = Math.sin(time * 3 + star.x * 0.01) * 5;
-    const size = 62 * scale;
-    drawAtlas(
+    const size = 96 * scale;
+    const drawn = drawSpriteFrame(
       ctx,
-      atlas,
-      ATLAS_FRAMES.star,
+      sprites,
+      {
+        sheet: "gameplayVfx",
+        index: 8 + Math.floor(time * 8 + star.x * 0.01) % 4,
+      },
       (star.x - cameraX) * scale - size / 2,
       (star.y + bob) * scale - size / 2,
       size,
       size,
     );
+    if (!drawn) {
+      drawAtlas(
+        ctx,
+        atlas,
+        ATLAS_FRAMES.star,
+        (star.x - cameraX) * scale - size / 2,
+        (star.y + bob) * scale - size / 2,
+        size,
+        size,
+      );
+    }
   }
 
   for (const checkpoint of level.checkpoints) {
     const active = state.activeCheckpoint === checkpoint.id;
     const glow = active ? 1 : 0.76 + Math.sin(time * 3) * 0.08;
-    drawAtlas(
+    const pedestalSize = 152 * scale;
+    const centerX = (checkpoint.x - cameraX + checkpoint.width / 2) * scale;
+    const groundY = (checkpoint.y + checkpoint.height) * scale;
+    const drawn = drawSpriteFrame(
       ctx,
-      atlas,
-      ATLAS_FRAMES.checkpoint,
-      (checkpoint.x - cameraX - 18) * scale,
-      (checkpoint.y - 38) * scale,
-      86 * scale,
-      132 * scale,
+      sprites,
+      { sheet: "environmentTiles", index: 15 },
+      centerX - pedestalSize / 2,
+      groundY - pedestalSize * (227 / SPRITE_CELL_SIZE),
+      pedestalSize,
+      pedestalSize,
       false,
       glow,
     );
+    if (drawn) {
+      const flameSize = 112 * scale;
+      drawSpriteFrame(
+        ctx,
+        sprites,
+        {
+          sheet: "ambientVfx",
+          index: 4 + Math.floor(time * 8) % 4,
+        },
+        centerX - flameSize / 2,
+        groundY - 152 * scale,
+        flameSize,
+        flameSize,
+        false,
+        active ? 1 : 0.72,
+      );
+    } else {
+      drawAtlas(
+        ctx,
+        atlas,
+        ATLAS_FRAMES.checkpoint,
+        (checkpoint.x - cameraX - 18) * scale,
+        (checkpoint.y - 38) * scale,
+        86 * scale,
+        132 * scale,
+        false,
+        glow,
+      );
+    }
   }
 
-  drawAtlas(
+  const gateSize = 260 * scale;
+  const gateCenterX =
+    (level.finish.x - cameraX + level.finish.width / 2) * scale;
+  const gateGroundY = (level.finish.y + level.finish.height) * scale;
+  const gateDrawn = drawSpriteFrame(
     ctx,
-    atlas,
-    ATLAS_FRAMES.gate,
-    (level.finish.x - cameraX - 30) * scale,
-    (level.finish.y - 36) * scale,
-    184 * scale,
-    218 * scale,
+    sprites,
+    { sheet: "environmentTiles", index: 9 },
+    gateCenterX - gateSize / 2,
+    gateGroundY - gateSize * (224 / SPRITE_CELL_SIZE),
+    gateSize,
+    gateSize,
   );
+  if (gateDrawn) {
+    const portalSize = 186 * scale;
+    drawSpriteFrame(
+      ctx,
+      sprites,
+      {
+        sheet: "ambientVfx",
+        index: Math.floor(time * 8) % 4,
+      },
+      gateCenterX - portalSize / 2,
+      gateGroundY - 192 * scale,
+      portalSize,
+      portalSize,
+      false,
+      0.92,
+    );
+  } else {
+    drawAtlas(
+      ctx,
+      atlas,
+      ATLAS_FRAMES.gate,
+      (level.finish.x - cameraX - 30) * scale,
+      (level.finish.y - 36) * scale,
+      184 * scale,
+      218 * scale,
+    );
+  }
 
   for (const enemy of state.enemies) {
     if (
       !enemy.alive &&
-      (enemy.animation.name !== "defeated" || enemy.animation.time >= 0.4)
+      (enemy.animation.name !== "death" || enemy.animation.time >= 0.7)
     ) {
       continue;
     }
@@ -592,12 +878,12 @@ const drawWorldEntities = (
       (pose.anchorY + pose.offsetY) * scale,
     );
     ctx.rotate(pose.rotation);
-    drawAtlas(
+    drawSpriteFrame(
       ctx,
-      atlas,
+      sprites,
       pose.frame,
       (-pose.width * scale) / 2,
-      -pose.height * scale,
+      -pose.height * (224 / SPRITE_CELL_SIZE) * scale,
       pose.width * scale,
       pose.height * scale,
       enemy.direction < 0,
@@ -608,13 +894,14 @@ const drawWorldEntities = (
     if (
       enemy.alive &&
       enemy.kind === "beetle" &&
-      enemy.phase === "charge"
+      (enemy.phase === "alert" || enemy.phase === "charge")
     ) {
       ctx.save();
       ctx.fillStyle = `rgba(255,205,104,${0.55 + Math.sin(time * 22) * 0.25})`;
       ctx.font = `${Math.max(18, 24 * scale)}px sans-serif`;
       ctx.textAlign = "center";
-      ctx.fillText("!!", (enemy.x - cameraX + enemy.width / 2) * scale, (enemy.y - 16) * scale);
+      const marker = enemy.phase === "alert" ? "!" : "!!";
+      ctx.fillText(marker, (enemy.x - cameraX + enemy.width / 2) * scale, (enemy.y - 16) * scale);
       ctx.restore();
     }
   }
@@ -628,12 +915,12 @@ const drawWorldEntities = (
     heroPose.anchorY * scale,
   );
   ctx.rotate(heroPose.rotation);
-  drawAtlas(
+  drawSpriteFrame(
     ctx,
-    atlas,
+    sprites,
     heroPose.frame,
     (-heroPose.width / 2) * scale,
-    (-heroPose.height + heroPose.offsetY) * scale,
+    (-heroPose.height * (224 / SPRITE_CELL_SIZE) + heroPose.offsetY) * scale,
     heroPose.width * scale,
     heroPose.height * scale,
     state.player.facing < 0,
@@ -641,7 +928,7 @@ const drawWorldEntities = (
   );
   ctx.restore();
 
-  if (isAtlasReady(atlas)) return;
+  if (isSpriteReady(sprites[heroPose.frame.sheet])) return;
 
   for (const star of level.stars) {
     if (state.collected.includes(star.id)) continue;
@@ -740,6 +1027,7 @@ const drawAmbientParticles = (
 
 const drawBursts = (
   ctx: CanvasRenderingContext2D,
+  sprites: SpriteImages,
   bursts: VisualBurst[],
   cameraX: number,
   scale: number,
@@ -747,6 +1035,43 @@ const drawBursts = (
   for (const burst of bursts) {
     const progress = Math.min(1, burst.age / 0.65);
     const alpha = 1 - progress;
+    const isGroundedEffect =
+      burst.type === "jump" ||
+      burst.type === "land" ||
+      burst.type === "stomp";
+    const startFrame =
+      burst.type === "jump"
+        ? 0
+        : burst.type === "land" || burst.type === "stomp"
+          ? 4
+          : burst.type === "hurt"
+            ? 12
+            : 8;
+    const frameOffset = Math.min(3, Math.floor(burst.age * 14));
+    const worldSize =
+      burst.type === "land" || burst.type === "stomp"
+        ? 168
+        : burst.type === "hurt"
+          ? 132
+          : 116;
+    const size = worldSize * scale;
+    const effectX = (burst.x - cameraX) * scale - size / 2;
+    const effectY = isGroundedEffect
+      ? burst.y * scale - size * (244 / SPRITE_CELL_SIZE)
+      : burst.y * scale - size / 2;
+    const drawn = drawSpriteFrame(
+      ctx,
+      sprites,
+      { sheet: "gameplayVfx", index: startFrame + frameOffset },
+      effectX,
+      effectY,
+      size,
+      size,
+      false,
+      alpha,
+    );
+    if (drawn) continue;
+
     const count = burst.type === "star" || burst.type === "finish" ? 12 : 7;
     const baseColor =
       burst.type === "hurt"
@@ -796,6 +1121,7 @@ export function renderGame(
     width,
     height,
     atlas,
+    sprites,
     time,
     lowQuality,
     reducedMotion,
@@ -820,17 +1146,31 @@ export function renderGame(
   );
   drawSky(ctx, width, height, time);
 
-  repeatAtlasStrip(
-    ctx,
-    atlas,
-    ATLAS_FRAMES.skyline,
-    cameraX * 0.12 * scale,
-    height * 0.3,
-    Math.max(width * 0.92, 980),
-    height * 0.38,
-    width,
-    0.64,
-  );
+  if (isSpriteReady(sprites.parallax)) {
+    repeatSpriteStrip(
+      ctx,
+      sprites,
+      { sheet: "parallax", index: 0, columns: 1, rows: 4 },
+      cameraX * 0.12 * scale,
+      height * 0.06,
+      Math.max(width * 1.05, 1_100),
+      height * 0.5,
+      width,
+      0.68,
+    );
+  } else {
+    repeatAtlasStrip(
+      ctx,
+      atlas,
+      ATLAS_FRAMES.skyline,
+      cameraX * 0.12 * scale,
+      height * 0.3,
+      Math.max(width * 0.92, 980),
+      height * 0.38,
+      width,
+      0.64,
+    );
+  }
 
   const distanceMist = ctx.createLinearGradient(0, height * 0.42, 0, height * 0.78);
   distanceMist.addColorStop(0, "rgba(68,58,91,0)");
@@ -839,17 +1179,42 @@ export function renderGame(
   ctx.fillStyle = distanceMist;
   ctx.fillRect(0, height * 0.32, width, height * 0.5);
 
-  repeatAtlasStrip(
-    ctx,
-    atlas,
-    ATLAS_FRAMES.middleRuins,
-    cameraX * 0.28 * scale,
-    height * 0.52,
-    Math.max(width * 0.95, 1_040),
-    height * 0.28,
-    width,
-    0.76,
-  );
+  if (isSpriteReady(sprites.parallax)) {
+    repeatSpriteStrip(
+      ctx,
+      sprites,
+      { sheet: "parallax", index: 1, columns: 1, rows: 4 },
+      cameraX * 0.28 * scale,
+      height * 0.24,
+      Math.max(width * 1.08, 1_180),
+      height * 0.54,
+      width,
+      0.78,
+    );
+    repeatSpriteStrip(
+      ctx,
+      sprites,
+      { sheet: "parallax", index: 2, columns: 1, rows: 4 },
+      cameraX * 0.52 * scale,
+      height * 0.39,
+      Math.max(width * 1.08, 1_180),
+      height * 0.5,
+      width,
+      0.76,
+    );
+  } else {
+    repeatAtlasStrip(
+      ctx,
+      atlas,
+      ATLAS_FRAMES.middleRuins,
+      cameraX * 0.28 * scale,
+      height * 0.52,
+      Math.max(width * 0.95, 1_040),
+      height * 0.28,
+      width,
+      0.76,
+    );
+  }
   drawLightBeams(ctx, width, height, lowQuality);
 
   const platforms = getRuntimePlatforms(state, level);
@@ -860,28 +1225,60 @@ export function renderGame(
     ) {
       continue;
     }
-    drawPlatform(ctx, atlas, platform, cameraX, scale);
+    drawPlatform(ctx, atlas, sprites, platform, cameraX, scale);
   }
+
+  drawAnimatedSceneProps(
+    ctx,
+    sprites,
+    cameraX,
+    viewWorldWidth,
+    scale,
+    time,
+  );
+  drawAmbientSpriteEffects(
+    ctx,
+    sprites,
+    cameraX,
+    viewWorldWidth,
+    scale,
+    time,
+    reducedMotion,
+  );
 
   for (const hazard of level.hazards) {
     if (hazard.x + hazard.width < cameraX || hazard.x > cameraX + viewWorldWidth) continue;
     drawSpikes(ctx, atlas, hazard, cameraX, scale);
   }
 
-  drawWorldEntities(ctx, atlas, state, level, cameraX, scale, time);
-  drawBursts(ctx, activeBursts, cameraX, scale);
+  drawWorldEntities(ctx, atlas, sprites, state, level, cameraX, scale, time);
+  drawBursts(ctx, sprites, activeBursts, cameraX, scale);
 
-  repeatAtlasStrip(
-    ctx,
-    atlas,
-    ATLAS_FRAMES.foreground,
-    cameraX * 1.18 * scale,
-    height * 0.87,
-    Math.max(width * 0.92, 960),
-    height * 0.16,
-    width,
-    0.94,
-  );
+  if (isSpriteReady(sprites.parallax)) {
+    repeatSpriteStrip(
+      ctx,
+      sprites,
+      { sheet: "parallax", index: 3, columns: 1, rows: 4 },
+      cameraX * 0.82 * scale,
+      height * 0.62,
+      Math.max(width * 1.05, 1_120),
+      height * 0.44,
+      width,
+      0.9,
+    );
+  } else {
+    repeatAtlasStrip(
+      ctx,
+      atlas,
+      ATLAS_FRAMES.foreground,
+      cameraX * 1.18 * scale,
+      height * 0.87,
+      Math.max(width * 0.92, 960),
+      height * 0.16,
+      width,
+      0.94,
+    );
+  }
 
   if (!lowQuality) {
     const fog = ctx.createLinearGradient(0, height * 0.68, 0, height);

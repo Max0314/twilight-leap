@@ -73,7 +73,7 @@ describe("simulation", () => {
     expect(
       stomped.state.enemies.find((enemy) => enemy.id === enemySeed.id)?.animation
         .name,
-    ).toBe("defeated");
+    ).toBe("death");
 
     const hurt = createGame(LEVEL);
     hurt.player.x = enemySeed.x + 6;
@@ -126,8 +126,20 @@ describe("simulation", () => {
     result.state.player.y = 1_100;
     result = stepGame(result.state, idle, 1 / 60, LEVEL);
     expect(result.state.mode).toBe("respawning");
+    expect(result.state.player.animation.name).toBe("hurt");
 
-    for (let index = 0; index < 40; index += 1) {
+    for (let index = 0; index < 12; index += 1) {
+      result = stepGame(result.state, idle, 1 / 60, LEVEL);
+    }
+    expect(result.state.player.animation.name).toBe("death");
+
+    for (let index = 0; index < 47; index += 1) {
+      result = stepGame(result.state, idle, 1 / 60, LEVEL);
+    }
+    expect(result.state.player.animation.name).toBe("respawn");
+    expect(result.state.player.x).toBe(checkpoint.x + 8);
+
+    for (let index = 0; index < 21; index += 1) {
       result = stepGame(result.state, idle, 1 / 60, LEVEL);
     }
     expect(result.state.mode).toBe("playing");
@@ -141,9 +153,19 @@ describe("simulation", () => {
     state.player.y = beetleSeed.y - state.player.height;
     const result = stepGame(state, idle, 1 / 60, LEVEL);
     const beetle = result.state.enemies.find((enemy) => enemy.id === beetleSeed.id)!;
-    expect(beetle.phase).toBe("charge");
-    expect(beetle.animation.name).toBe("charge");
+    expect(beetle.phase).toBe("alert");
+    expect(beetle.animation.name).toBe("alert");
     expect(beetle.x).toBe(beetleSeed.x);
+
+    let telegraph = result.state;
+    for (let index = 0; index < 16; index += 1) {
+      telegraph = stepGame(telegraph, idle, 1 / 60, LEVEL).state;
+    }
+    const charged = telegraph.enemies.find(
+      (enemy) => enemy.id === beetleSeed.id,
+    )!;
+    expect(charged.phase).toBe("charge");
+    expect(charged.x).toBe(beetleSeed.x);
   });
 
   it("freezes time while paused", () => {

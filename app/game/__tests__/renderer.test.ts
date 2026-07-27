@@ -62,15 +62,13 @@ describe("renderer atlas map", () => {
     state.player.animation.cycle = 21;
     const nextBeat = getHeroPose(state);
 
-    expect(first.width / first.height).toBeCloseTo(
-      first.frame.width / first.frame.height,
-      5,
-    );
+    expect(first.width).toBe(first.height);
+    expect(first.frame.sheet).toBe("heroLocomotion");
     expect(first.anchorX).toBe(state.player.x + state.player.width / 2);
     expect(first.anchorY).toBe(state.player.y + state.player.height + 8);
     expect(first.animation).toBe("run");
-    expect(sameDistance.frame).toBe(first.frame);
-    expect(nextBeat.frame).not.toBe(first.frame);
+    expect(sameDistance.frame.index).toBe(first.frame.index);
+    expect(nextBeat.frame.index).not.toBe(first.frame.index);
   });
 
   it("keeps jump, double-jump, wall-slide, and landing poses distinct", async () => {
@@ -91,7 +89,7 @@ describe("renderer atlas map", () => {
     const land = getHeroPose(state);
 
     expect(jump.animation).toBe("jump");
-    expect(doubleJump.frame).not.toBe(jump.frame);
+    expect(doubleJump.frame.index).not.toBe(jump.frame.index);
     expect(Math.abs(wallSlide.rotation)).toBeGreaterThan(Math.abs(jump.rotation));
     expect(land.animation).toBe("land");
   });
@@ -103,17 +101,20 @@ describe("renderer atlas map", () => {
     const ember = state.enemies.find((enemy) => enemy.kind === "emberling")!;
     const beetle = state.enemies.find((enemy) => enemy.kind === "beetle")!;
 
-    ember.animation = { name: "walk", time: 0.1, cycle: 0 };
+    ember.animation = { name: "patrol", time: 0.1, cycle: 0 };
     const emberStepA = getEnemyPose(ember);
-    ember.animation.cycle = 10;
+    ember.animation.cycle = 13;
     const emberStepB = getEnemyPose(ember);
-    expect(emberStepB.frame).not.toBe(emberStepA.frame);
+    expect(emberStepB.frame.index).not.toBe(emberStepA.frame.index);
 
     beetle.animation = { name: "charge", time: 0.2, cycle: 0 };
-    expect(getEnemyPose(beetle).frame).toBe(ATLAS_FRAMES.beetleCharge);
+    expect(getEnemyPose(beetle).frame).toEqual({
+      sheet: "beetleActions",
+      index: 2,
+    });
     beetle.animation = { name: "dash", time: 0.1, cycle: 20 };
-    expect(getEnemyPose(beetle).frame).toBe(ATLAS_FRAMES.beetleDash);
-    beetle.animation = { name: "defeated", time: 0.3, cycle: 0 };
+    expect(getEnemyPose(beetle).frame.sheet).toBe("beetleActions");
+    beetle.animation = { name: "death", time: 0.6, cycle: 0 };
     expect(getEnemyPose(beetle).alpha).toBeLessThan(1);
   });
 

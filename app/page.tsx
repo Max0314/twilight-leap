@@ -133,10 +133,10 @@ export default function Home() {
               className="icon-button shake-button"
               type="button"
               onClick={toggleScreenShake}
-              aria-label={prefs.screenShake ? "关闭画面震动" : "开启画面震动"}
+              aria-label={prefs.screenShake ? "关闭震动反馈" : "开启震动反馈"}
               aria-pressed={prefs.screenShake}
             >
-              <span aria-hidden="true">{prefs.screenShake ? "震" : "稳"}</span>
+              <span aria-hidden="true">{prefs.screenShake ? "震" : "静"}</span>
             </button>
             <button
               className="icon-button"
@@ -196,10 +196,10 @@ export default function Home() {
                 className="secondary-button pause-shake-button"
                 type="button"
                 onClick={toggleScreenShake}
-                aria-label={prefs.screenShake ? "关闭画面震动" : "开启画面震动"}
+                aria-label={prefs.screenShake ? "关闭震动反馈" : "开启震动反馈"}
                 aria-pressed={prefs.screenShake}
               >
-                画面震动：{prefs.screenShake ? "开启" : "关闭"}
+                震动反馈：{prefs.screenShake ? "开启" : "关闭"}
               </button>
             </div>
           </div>
