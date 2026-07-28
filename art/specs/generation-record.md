@@ -67,7 +67,7 @@ legs, proportion drift, and insufficient temporal resolution.
   with `scripts/art/replace_sprite_sequence.py`, and explicit negative Y offsets
   for the two flight arcs so airborne frames are not forced onto the baseline.
 
-### Leg-topology correction
+### Leg-topology correction (rejected production render)
 
 The first assembled 16-frame sheet was rejected during user review because its
 silhouette changed but the same anatomical leg remained in front throughout
@@ -93,3 +93,38 @@ exchange the near/far arm positions.
 `previews/hero-run-limb-swap-proof.png` is the explicit topology review artifact.
 Magenta marks the near arm and leg; cyan marks the far arm and leg. It is not
 used at runtime.
+
+The deterministic limb render itself was later rejected for production because
+its line segments, joint circles, and identity colors remained visually legible
+as a skeletal rig during gameplay. The motion topology was valid, but the
+presentation layer was not. That sheet must not be restored as a runtime asset.
+
+### Full-art production replacement
+
+Replaced on 2026-07-28 with a newly generated, fully rendered 16-frame sheet.
+
+- Built-in image generation was used in edit/reference mode.
+- `hero-run` and `hero-locomotion` supplied character identity, costume,
+  compact proportions, palette, and pixel density.
+- The first no-rig candidate was rejected because it contained standing poses
+  at the loop boundary and did not express the two contacts clearly enough.
+- The accepted second candidate explicitly requested contact A, passing A,
+  flight A, contact B, passing B, flight B, and a pre-contact loop closure.
+- All frames use complete sleeves, gloves, trousers, armor wraps, and boots.
+  There are no exposed rig lines, joint dots, topology colors, labels, or
+  construction overlays in the runtime image.
+- Final chroma source:
+  `raw/hero-run-production-chroma.png`.
+- Chroma removal used a border-sampled green matte with despill and one-pixel
+  edge contraction.
+- `scripts/art/normalize_sprite_sheet.py --align-actors` retained the largest
+  connected actor in every cell, removed residual chroma components, aligned
+  all frames to bottom-center pivot `(128, 224)`, and produced the exact
+  `1024 x 1024` RGBA sheet.
+- Runtime source and public copies are byte-identical.
+- `previews/hero-run-production-preview.gif` is the normal 16 fps review
+  animation. Audit overlays remain separate and are never copied to `public/`.
+
+The asset audit now rejects the previous construction palette in the runtime
+sheet and checks that frames `0` and `8` place their grounded contacts on
+opposite screen sides.
