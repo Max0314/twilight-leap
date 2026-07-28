@@ -5,7 +5,7 @@ export const SPRITE_SHEET_PATHS = {
   heroLocomotion:
     "/assets/sprites/characters/hero/hero-locomotion.png",
   heroRun:
-    "/assets/sprites/characters/hero/hero-run.png",
+    "/assets/sprites/characters/hero/hero-run-6fc4f264.png",
   heroAirborne:
     "/assets/sprites/characters/hero/hero-airborne.png",
   heroReactions:

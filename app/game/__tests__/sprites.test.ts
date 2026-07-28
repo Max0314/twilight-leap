@@ -16,6 +16,12 @@ describe("sprite sheets", () => {
     }
   });
 
+  it("content-fingerprints the frequently revised run sheet", () => {
+    expect(SPRITE_SHEET_PATHS.heroRun).toMatch(
+      /\/hero-run-[a-f0-9]{8}\.png$/,
+    );
+  });
+
   it("advances running at a readable distance-driven cadence", () => {
     const first = frameFromClip(HERO_CLIPS.run, 0, 0);
     const beforeNextBeat = frameFromClip(HERO_CLIPS.run, 0, 21.874);
