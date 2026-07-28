@@ -21,3 +21,20 @@ selected, packed, and copied into `public/assets/`.
 Use `specs/sprite-manifest.json` as the slicing source of truth.
 Use `python scripts/art/audit_sprite_assets.py` before packing assets for a
 runtime build.
+Use `scripts/art/replace_sprite_sequence.py` to pack a separately generated
+action board into a new sheet or replace consecutive frames without changing
+the rest of an existing sheet. Use `--frame-y-offsets` when an action includes
+airborne frames that must sit above the shared actor pivot.
+
+The dedicated hero run sheet also has a deterministic lower-body correction:
+
+```powershell
+python scripts/art/redraw_run_cycle_limbs.py `
+  --input art/raw/hero-run-16f-packed-base.png `
+  --output art/characters/hero/hero-run.png `
+  --audit-output art/previews/hero-run-limb-swap-audit.png
+```
+
+This pass guarantees that the brighter near limbs and darker far limbs exchange
+front/back motion paths between frames `0` and `8`, with the arms
+counter-swinging against their paired legs.

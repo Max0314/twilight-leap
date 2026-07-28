@@ -59,11 +59,11 @@ describe("renderer atlas map", () => {
     const first = getHeroPose(state);
     state.elapsed = 20;
     const sameDistance = getHeroPose(state);
-    state.player.animation.cycle = 21;
+    state.player.animation.cycle = 21.875;
     const nextBeat = getHeroPose(state);
 
     expect(first.width).toBe(first.height);
-    expect(first.frame.sheet).toBe("heroLocomotion");
+    expect(first.frame.sheet).toBe("heroRun");
     expect(first.anchorX).toBe(state.player.x + state.player.width / 2);
     expect(first.anchorY).toBe(state.player.y + state.player.height + 8);
     expect(first.animation).toBe("run");

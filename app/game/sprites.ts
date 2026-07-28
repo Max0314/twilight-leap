@@ -4,6 +4,8 @@ export const SPRITE_SHEET_SIZE = 1_024;
 export const SPRITE_SHEET_PATHS = {
   heroLocomotion:
     "/assets/sprites/characters/hero/hero-locomotion.png",
+  heroRun:
+    "/assets/sprites/characters/hero/hero-run.png",
   heroAirborne:
     "/assets/sprites/characters/hero/hero-airborne.png",
   heroReactions:
@@ -47,6 +49,7 @@ export type AnimationClip = {
   count: number;
   fps: number;
   loop: boolean;
+  distancePerFrame?: number;
 };
 
 export const HERO_CLIPS = {
@@ -63,13 +66,15 @@ export const HERO_CLIPS = {
     count: 6,
     fps: 8,
     loop: true,
+    distancePerFrame: 28,
   },
   run: {
-    sheet: "heroLocomotion",
-    start: 10,
-    count: 6,
-    fps: 12,
+    sheet: "heroRun",
+    start: 0,
+    count: 16,
+    fps: 16,
     loop: true,
+    distancePerFrame: 21.875,
   },
   jump: {
     sheet: "heroAirborne",
@@ -157,6 +162,7 @@ export const EMBERLING_CLIPS = {
     count: 6,
     fps: 8,
     loop: true,
+    distancePerFrame: 10,
   },
   turn: {
     sheet: "emberlingLocomotion",
@@ -216,6 +222,7 @@ export const BEETLE_CLIPS = {
     count: 6,
     fps: 8,
     loop: true,
+    distancePerFrame: 7,
   },
   turn: {
     sheet: "beetleLocomotion",
@@ -244,6 +251,7 @@ export const BEETLE_CLIPS = {
     count: 4,
     fps: 12,
     loop: true,
+    distancePerFrame: 28,
   },
   recover: {
     sheet: "beetleActions",
@@ -269,7 +277,10 @@ export const frameFromClip = (
   const progress =
     distance === undefined
       ? Math.floor(Math.max(0, time) * clip.fps)
-      : Math.floor(Math.max(0, distance) / Math.max(1, 96 / clip.fps));
+      : Math.floor(
+          Math.max(0, distance) /
+            Math.max(1, clip.distancePerFrame ?? 96 / clip.fps),
+        );
   const offset = clip.loop
     ? progress % clip.count
     : Math.min(clip.count - 1, progress);

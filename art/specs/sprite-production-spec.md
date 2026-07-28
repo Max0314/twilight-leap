@@ -58,13 +58,18 @@ intentional pixel clusters or dithering.
 | --- | ---: | --- |
 | idle | 6 fps | yes |
 | walk / patrol | 8 fps | yes |
-| run / dash | 12 fps | yes |
+| run | 16 fps | yes |
+| dash | 12 fps | yes |
 | jump / wall jump | 12 fps | no |
 | apex / fall / wall slide | 8 fps | conditional |
 | land / hurt / recover | 12 fps | no |
 | death | 10 fps | no |
 | environment loop | 6 fps | yes |
 | VFX | 12-16 fps | no unless noted |
+
+Looping locomotion is advanced by world distance rather than render frames.
+`distancePerFrame` defines the stride sampling distance so movement speed changes
+the cadence without allowing high-speed movement to over-crank the animation.
 
 ## QA gates
 

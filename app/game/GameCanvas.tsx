@@ -10,6 +10,7 @@ import { createAudioController, type AudioController } from "./audio";
 import { cancelHaptics, playHaptic } from "./feedback";
 import { LEVEL } from "./level";
 import {
+  getHeroPose,
   renderGame,
   type VisualBurst,
 } from "./renderer";
@@ -390,6 +391,9 @@ export function GameCanvas({
         lastSnapshotAt = now;
         canvas.dataset.playerAnimation =
           stateRef.current.player.animation.name;
+        const heroPose = getHeroPose(stateRef.current);
+        canvas.dataset.playerFrame =
+          `${heroPose.frame.sheet}:${heroPose.frame.index}`;
         canvas.dataset.playerX = stateRef.current.player.x.toFixed(1);
         canvas.dataset.enemyAnimations = stateRef.current.enemies
           .map((enemy) => `${enemy.id}:${enemy.animation.name}`)

@@ -20,8 +20,14 @@
       "path": "../characters/hero/hero-locomotion.png",
       "animations": {
         "idle": { "start": 0, "count": 4, "fps": 6, "loop": true },
-        "walk": { "start": 4, "count": 6, "fps": 8, "loop": true },
-        "run": { "start": 10, "count": 6, "fps": 12, "loop": true }
+        "walk": { "start": 4, "count": 6, "fps": 8, "loop": true, "distancePerFrame": 28 }
+      }
+    },
+    {
+      "id": "hero-run",
+      "path": "../characters/hero/hero-run.png",
+      "animations": {
+        "run": { "start": 0, "count": 16, "fps": 16, "loop": true, "distancePerFrame": 21.875 }
       }
     },
     {
@@ -51,7 +57,7 @@
       "path": "../characters/enemies/emberling/emberling-locomotion.png",
       "animations": {
         "idle": { "start": 0, "count": 4, "fps": 6, "loop": true },
-        "patrol": { "start": 4, "count": 6, "fps": 8, "loop": true },
+        "patrol": { "start": 4, "count": 6, "fps": 8, "loop": true, "distancePerFrame": 10 },
         "turn": { "start": 10, "count": 2, "fps": 12, "loop": false },
         "alert": { "start": 12, "count": 4, "fps": 10, "loop": false }
       }
@@ -71,7 +77,7 @@
       "path": "../characters/enemies/beetle/beetle-locomotion.png",
       "animations": {
         "idle": { "start": 0, "count": 4, "fps": 6, "loop": true },
-        "patrol": { "start": 4, "count": 6, "fps": 8, "loop": true },
+        "patrol": { "start": 4, "count": 6, "fps": 8, "loop": true, "distancePerFrame": 7 },
         "turn": { "start": 10, "count": 2, "fps": 10, "loop": false },
         "alert": { "start": 12, "count": 4, "fps": 10, "loop": false }
       }
@@ -81,7 +87,7 @@
       "path": "../characters/enemies/beetle/beetle-actions.png",
       "animations": {
         "charge": { "start": 0, "count": 4, "fps": 10, "loop": false },
-        "dash": { "start": 4, "count": 4, "fps": 12, "loop": true },
+        "dash": { "start": 4, "count": 4, "fps": 12, "loop": true, "distancePerFrame": 28 },
         "recover": { "start": 8, "count": 3, "fps": 10, "loop": false },
         "death": { "start": 11, "count": 5, "fps": 10, "loop": false }
       }

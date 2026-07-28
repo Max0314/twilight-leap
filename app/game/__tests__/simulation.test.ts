@@ -8,6 +8,7 @@ import {
   setPaused,
   stepGame,
 } from "../simulation";
+import { HERO_CLIPS, frameFromClip } from "../sprites";
 import type { LevelDefinition } from "../types";
 
 const idle = { left: false, right: false, jump: false };
@@ -334,22 +335,45 @@ describe("simulation", () => {
   });
 
   it("advances walk and run cycles from movement distance", () => {
-    let state = createGame(LEVEL);
+    const level = isolatedLevel([
+      {
+        id: "run-cycle-floor",
+        kind: "stone",
+        x: -100,
+        y: 64,
+        width: 10_000,
+        height: 60,
+      },
+    ]);
+    let state = createGame(level);
     let sawWalk = false;
+    const runFrames = new Set<number>();
 
-    for (let index = 0; index < 30; index += 1) {
+    for (let index = 0; index < 180; index += 1) {
       state = stepGame(
         state,
         { left: false, right: true, jump: false },
         1 / 60,
-        LEVEL,
+        level,
       ).state;
       sawWalk ||= state.player.animation.name === "walk";
+      if (state.player.animation.name === "run") {
+        runFrames.add(
+          frameFromClip(
+            HERO_CLIPS.run,
+            state.player.animation.time,
+            state.player.animation.cycle,
+          ).index,
+        );
+      }
     }
 
     expect(sawWalk).toBe(true);
     expect(state.player.animation.name).toBe("run");
     expect(state.player.animation.cycle).toBeGreaterThan(0);
+    expect(runFrames).toEqual(
+      new Set(Array.from({ length: 16 }, (_, index) => index)),
+    );
   });
 
   it("transitions through apex, fall, and landing animation states", () => {
