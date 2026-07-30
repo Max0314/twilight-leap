@@ -167,6 +167,11 @@ export default function Home() {
               <span>贴墙下落，按跳跃键蹬墙跳</span>
             </div>
             <p className="originality-note">原创角色与场景 · 手机和电脑均可游玩</p>
+            <p className="filing-link">
+              <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
+                渝ICP备2026016967号-1
+              </a>
+            </p>
           </div>
         </section>
       ) : null}
