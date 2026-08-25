@@ -17,6 +17,8 @@ test("statically renders the finished Twilight Leap entry screen", async () => {
   assert.match(html, /开始旅程/);
   assert.match(html, /渝ICP备2026016967号-1/);
   assert.match(html, /https:\/\/beian\.miit\.gov\.cn\//);
+  assert.match(html, /渝公网安备 50010502504754号/);
+  assert.match(html, /https:\/\/beian\.mps\.gov\.cn\/#\/query\/webSearch\?code=50010502504754/);
   assert.doesNotMatch(html, /codex-preview|Codex is working|react-loading-skeleton/i);
 });
 

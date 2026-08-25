@@ -336,14 +336,28 @@ kbd {
 }
 
 .filing-link {
+  display: flex;
   margin: 10px 0 0;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   font-size: 10px;
   line-height: 1.5;
 }
 
 .filing-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: rgba(214, 199, 194, 0.6);
   text-decoration: none;
+}
+
+.filing-link img {
+  width: 16px;
+  height: 17px;
+  object-fit: contain;
 }
 
 .filing-link a:hover {
