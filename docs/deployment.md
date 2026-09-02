@@ -15,8 +15,8 @@ Internet
 ## 目录建议
 
 ```text
-/srv/fribench/apps/games/twilight-leap/releases/<commit>  版本化部署副本
-/srv/fribench/apps/games/twilight-leap/current            当前 release
+/srv/fribench/games/twilight-leap/releases/<commit>  版本化部署副本
+/srv/fribench/games/twilight-leap/current            当前 release
 ```
 
 当前版本没有 Secret，也不需要创建服务器 `.env`；Compose 默认值就是私有部署配置。
@@ -26,7 +26,7 @@ Internet
 以下命令由具有 Docker 权限的管理账户执行：
 
 ```bash
-cd /srv/fribench/apps/games/twilight-leap/current
+cd /srv/fribench/games/twilight-leap/current
 ```
 
 `NEXT_PUBLIC_SITE_URL` 是构建参数。完成 ICP 备案并接入正式 HTTPS 域名后，
