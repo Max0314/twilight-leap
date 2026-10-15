@@ -10,6 +10,8 @@ import {
 import type { InputState } from "./game/simulation";
 import {
   DEFAULT_PREFS,
+  connectAccountStorage,
+  currentStorageKey,
   loadPrefs,
   savePrefs,
   updateRecords,
@@ -36,13 +38,22 @@ export default function Home() {
   const [prefs, setPrefs] = useState<GamePrefs>(DEFAULT_PREFS);
   const [restartToken, setRestartToken] = useState(0);
   const touchInputRef = useRef<InputState>({ left: false, right: false, jump: false });
+  const runIdentityRef = useRef(currentStorageKey());
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => setPrefs(loadPrefs()));
-    return () => cancelAnimationFrame(frameId);
+    const disconnect = connectAccountStorage(() => {
+      setPrefs(loadPrefs()); setScreen("intro"); setResult(null);
+      setRestartToken(token => token + 1);
+      touchInputRef.current = { left: false, right: false, jump: false };
+    });
+    const pauseForAccount = () => setScreen(current => current === "playing" ? "paused" : current);
+    window.addEventListener("fribench:panel-open", pauseForAccount);
+    return () => { cancelAnimationFrame(frameId); disconnect(); window.removeEventListener("fribench:panel-open", pauseForAccount); };
   }, []);
 
   const begin = () => {
+    runIdentityRef.current = currentStorageKey();
     touchInputRef.current = { left: false, right: false, jump: false };
     setResult(null);
     setRestartToken((token) => token + 1);
@@ -58,7 +69,8 @@ export default function Home() {
   };
 
   const finish = (finalSnapshot: GameSnapshot) => {
-    const nextPrefs = updateRecords(prefs, finalSnapshot.time, finalSnapshot.stars);
+    if (runIdentityRef.current !== currentStorageKey()) return;
+    const nextPrefs = updateRecords(loadPrefs(), finalSnapshot.time, finalSnapshot.stars);
     setPrefs(nextPrefs);
     savePrefs(nextPrefs);
     setResult(finalSnapshot);
@@ -66,19 +78,15 @@ export default function Home() {
   };
 
   const toggleSound = () => {
-    setPrefs((current) => {
-      const next = { ...current, sound: !current.sound };
-      savePrefs(next);
-      return next;
-    });
+    const current = loadPrefs();
+    const next = { ...current, sound: !current.sound };
+    savePrefs(next); setPrefs(next);
   };
 
   const toggleScreenShake = () => {
-    setPrefs((current) => {
-      const next = { ...current, screenShake: !current.screenShake };
-      savePrefs(next);
-      return next;
-    });
+    const current = loadPrefs();
+    const next = { ...current, screenShake: !current.screenShake };
+    savePrefs(next); setPrefs(next);
   };
 
   const setTouch = (

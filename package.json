@@ -17,7 +17,7 @@
     "verify": "npm run test && npm run lint && npm run typecheck && npm run test:rendered && npm run audit:prod"
   },
   "dependencies": {
-    "next": "16.2.11",
+    "next": "16.4.1",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
@@ -27,7 +27,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.4.1",
     "serve": "14.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
@@ -42,7 +42,8 @@
       "brace-expansion": "5.0.9"
     },
     "postcss": "8.5.26",
-    "sharp": "0.35.3",
+    "sharp": "0.35.5",
+    "source-map-js": "1.2.2",
     "vite": "8.1.5"
   },
   "type": "module"
