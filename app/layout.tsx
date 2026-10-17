@@ -64,6 +64,8 @@ export default function RootLayout({
       >
         {children}
         <script defer src="/_fribench/client.js" />
+        <link rel="stylesheet" href="/_fribench/account-view.css" />
+        <script defer src="/_fribench/account-view.js" />
       </body>
     </html>
   );

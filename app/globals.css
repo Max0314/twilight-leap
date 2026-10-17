@@ -648,3 +648,4 @@ kbd {
     animation-iteration-count: 1 !important;
   }
 }
+.twilight-account{width:min(100%,400px);margin:16px auto;color:#dacadc;--account-accent:#ffd59d;--account-radius:12px}.intro-card,.modal-card{max-height:calc(100dvh - 32px);overflow-y:auto}.twilight-account .account-entry-trigger{font-size:13px}
