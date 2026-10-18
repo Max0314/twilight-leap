@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { AccountSlot } from "./AccountSlot";
 
 import {
   GameCanvas,
@@ -175,7 +176,7 @@ export default function Home() {
               <span>贴墙下落，按跳跃键蹬墙跳</span>
             </div>
             <p className="originality-note">原创角色与场景 · 手机和电脑均可游玩</p>
-            <div className="twilight-account" data-fribench-account data-account-title="旅途手札" data-account-guest-note="无需登录即可出发，连接账号可留住旅程。" />
+            <AccountSlot className="twilight-account" data-account-title="旅途手札" data-account-guest-note="无需登录即可出发，连接账号可留住旅程。" />
             <p className="filing-link">
               <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
                 渝ICP备2026016967号-1
@@ -203,7 +204,7 @@ export default function Home() {
           <div className="modal-card pause-card">
             <h2 id="pause-title">旅途暂歇</h2>
             <p>星火不会熄灭，准备好就继续。</p>
-            <div className="twilight-account" data-fribench-account data-account-title="旅途手札" />
+            <AccountSlot className="twilight-account" data-account-title="旅途手札" />
             <div className="modal-actions">
               <button className="primary-button" type="button" onClick={togglePause}>
                 继续游戏
