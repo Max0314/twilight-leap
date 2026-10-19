@@ -10,7 +10,7 @@ describe("game page", () => {
     const markup = renderToStaticMarkup(<Home />);
     expect(markup).toContain("暮光跃境");
     expect(markup).toContain("收集星辉");
-    expect(markup).toContain("开始旅程");
+    expect(markup).toContain("开始游戏");
   });
 
   it("keeps an accessible sound toggle inside the pause dialog", () => {

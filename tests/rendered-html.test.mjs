@@ -8,13 +8,13 @@ test("statically renders the finished Twilight Leap entry screen", async () => {
   const html = await readFile(new URL("../out/index.html", import.meta.url), "utf8");
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /<title>暮光跃境 · Twilight Leap<\/title>/);
-  assert.match(html, /穿越余烬古城，在光影交错的原创像素世界中/);
+  assert.match(html, /平台跳跃游戏：收集 12 枚星辉/);
   assert.match(html, /property="og:image" content="https?:\/\/[^\"]+\/og\.png"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
   assert.match(html, /aria-label="暮光跃境游戏画面"/);
   assert.match(html, /TWILIGHT LEAP/);
   assert.match(html, /收集星辉，穿过余烬王庭，抵达星门。/);
-  assert.match(html, /开始旅程/);
+  assert.match(html, /开始游戏/);
   assert.match(html, /渝ICP备2026016967号-1/);
   assert.match(html, /https:\/\/beian\.miit\.gov\.cn\//);
   assert.match(html, /渝公网安备 50010502504754号/);

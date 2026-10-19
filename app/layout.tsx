@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 const title = "暮光跃境 · Twilight Leap";
 const description =
-  "穿越余烬古城，在光影交错的原创像素世界中收集星辉、越过敌人并抵达星门。";
+  "平台跳跃游戏：收集 12 枚星辉，避开尖刺和敌人，抵达终点。";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 

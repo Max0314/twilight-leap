@@ -168,7 +168,7 @@ export default function Home() {
             <p className="english-title">TWILIGHT LEAP</p>
             <p className="mission">收集星辉，穿过余烬王庭，抵达星门。</p>
             <button className="primary-button" type="button" onClick={begin}>
-              开始旅程
+              开始游戏
             </button>
             <div className="control-guide" aria-label="操作说明">
               <span><kbd>A</kbd><kbd>D</kbd> / 方向键移动</span>
@@ -176,7 +176,7 @@ export default function Home() {
               <span>贴墙下落，按跳跃键蹬墙跳</span>
             </div>
             <p className="originality-note">原创角色与场景 · 手机和电脑均可游玩</p>
-            <AccountSlot className="twilight-account" data-account-title="旅途手札" data-account-guest-note="无需登录即可出发，连接账号可留住旅程。" />
+            <AccountSlot className="twilight-account" data-account-title="账号与通关记录" data-account-guest-note="无需登录即可玩。登录后可同步最快用时和收集记录。" />
             <p className="filing-link">
               <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
                 渝ICP备2026016967号-1
@@ -202,9 +202,9 @@ export default function Home() {
       {screen === "paused" ? (
         <section className="modal-layer" aria-labelledby="pause-title">
           <div className="modal-card pause-card">
-            <h2 id="pause-title">旅途暂歇</h2>
-            <p>星火不会熄灭，准备好就继续。</p>
-            <AccountSlot className="twilight-account" data-account-title="旅途手札" />
+            <h2 id="pause-title">游戏已暂停</h2>
+            <p>点击继续返回本局，或重新开始。</p>
+            <AccountSlot className="twilight-account" data-account-title="账号与通关记录" />
             <div className="modal-actions">
               <button className="primary-button" type="button" onClick={togglePause}>
                 继续游戏
@@ -239,8 +239,8 @@ export default function Home() {
         <section className="modal-layer finish-layer" aria-labelledby="finish-title">
           <div className="modal-card finish-card">
             <div className="finish-star" aria-hidden="true">✦</div>
-            <h2 id="finish-title">星门已启</h2>
-            <p>余烬王庭的光再次沿着旧城墙流动。</p>
+            <h2 id="finish-title">关卡完成</h2>
+            <p>已抵达终点。下方为本次成绩和个人最佳记录。</p>
             <dl className="result-grid">
               <div><dt>本次时间</dt><dd>{formatTime(result.time)}</dd></div>
               <div><dt>星辉收集</dt><dd>{result.stars} / 12</dd></div>
