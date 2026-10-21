@@ -649,3 +649,16 @@ kbd {
   }
 }
 .twilight-account{width:min(100%,400px);margin:16px auto;color:#dacadc;--account-accent:#ffd59d;--account-radius:12px}.intro-card,.modal-card{max-height:calc(100dvh - 32px);overflow-y:auto}.twilight-account .account-entry-trigger{font-size:13px}
+
+/* Fribench: native scroll boundaries; keep nested gesture owners independent. */
+:root .intro-card,
+:root .modal-card {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+}
+/* The canvas, not its ancestor shell, owns game touch gestures. */
+.game-shell { touch-action: auto; }
+.game-canvas { touch-action: none; }
